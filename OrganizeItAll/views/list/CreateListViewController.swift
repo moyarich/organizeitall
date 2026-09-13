@@ -1,9 +1,10 @@
-import CoreData
+import SwiftData
 import SwiftUI
 
+@available(iOS 17.0, *)
 struct ListEditorView: View {
-    @Environment(\.managedObjectContext) private var context
-    @Environment(\.presentationMode) private var presentationMode
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
 
     private let list: List?
 
@@ -17,33 +18,28 @@ struct ListEditorView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
-                Section(header: Text("List")) {
+                Section("List") {
                     TextField("Name", text: $name)
-                        .autocapitalization(.sentences)
+                        .textInputAutocapitalization(.sentences)
 
-                    ZStack(alignment: .topLeading) {
-                        if detail.isEmpty {
-                            Text("Description")
-                                .foregroundColor(Color(UIColor.placeholderText))
-                                .padding(.top, 9)
-                                .padding(.leading, 5)
-                        }
-
-                        MultilineTextView(text: $detail)
-                            .frame(minHeight: 90)
-                    }
+                    TextField("Description", text: $detail, axis: .vertical)
+                        .lineLimit(3...6)
                 }
             }
-            .navigationBarTitle(list == nil ? "New List" : "Edit List", displayMode: .inline)
-            .navigationBarItems(
-                leading: Button("Cancel") { presentationMode.wrappedValue.dismiss() },
-                trailing: Button("Save", action: save)
-                    .disabled(trimmedName.isEmpty)
-            )
+            .navigationTitle(list == nil ? "New List" : "Edit List")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save", action: save)
+                        .disabled(trimmedName.isEmpty)
+                }
+            }
         }
-        .navigationViewStyle(StackNavigationViewStyle())
     }
 
     private var trimmedName: String {
@@ -53,21 +49,28 @@ struct ListEditorView: View {
     private func save() {
         guard !trimmedName.isEmpty else { return }
 
-        let item = list ?? List(context: context)
         let now = Date()
+        let trimmedDetail = detail.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if item.created_date == nil {
-            item.created_date = now
+        if let list {
+            list.name = trimmedName
+            list.detail = trimmedDetail
+            list.modifiedDate = now
+        } else {
+            let list = List(
+                name: trimmedName,
+                detail: trimmedDetail,
+                createdDate: now,
+                modifiedDate: now
+            )
+            modelContext.insert(list)
         }
-        item.modified_date = now
-        item.name = trimmedName
-        item.detail = detail.trimmingCharacters(in: .whitespacesAndNewlines)
 
         do {
-            try context.save()
-            presentationMode.wrappedValue.dismiss()
+            try modelContext.save()
+            dismiss()
         } catch {
-            context.rollback()
+            modelContext.rollback()
             assertionFailure("Unable to save list: \(error)")
         }
     }

@@ -1,6 +1,7 @@
-import CoreData
+import SwiftData
 import SwiftUI
 
+@available(iOS 17.0, *)
 private enum ListDetailSheet: Identifiable {
     case editList
     case newTask
@@ -9,42 +10,36 @@ private enum ListDetailSheet: Identifiable {
     var id: String {
         switch self {
         case .editList:
-            return "edit-list"
+            "edit-list"
         case .newTask:
-            return "new-task"
+            "new-task"
         case .editTask(let task):
-            return "edit-\(task.objectID.uriRepresentation().absoluteString)"
+            "edit-\(task.id.uuidString)"
         }
     }
 }
 
+@available(iOS 17.0, *)
 struct ListDetailView: View {
-    @Environment(\.managedObjectContext) private var context
-    @ObservedObject var list: List
-
-    @FetchRequest private var tasks: FetchedResults<Task>
+    @Environment(\.modelContext) private var modelContext
+    @Bindable var list: List
     @State private var activeSheet: ListDetailSheet?
 
-    init(list: List) {
-        self.list = list
-        _tasks = FetchRequest<Task>(
-            entity: Task.entity(),
-            sortDescriptors: [NSSortDescriptor(key: "modified_date", ascending: false)],
-            predicate: NSPredicate(format: "list == %@", list)
-        )
+    private var tasks: [Task] {
+        list.tasks.sorted { $0.modifiedDate > $1.modifiedDate }
     }
 
     var body: some View {
         Group {
             if tasks.isEmpty {
-                EmptyStateView(
+                ContentUnavailableView(
+                    "No tasks in this list",
                     systemImage: "checkmark.circle",
-                    title: "No tasks in this list",
-                    message: "Add the first task and keep everything for \(list.wrappedName) together."
+                    description: Text("Add the first task and keep everything for \(list.wrappedName) together.")
                 )
             } else {
                 SwiftUI.List {
-                    ForEach(tasks, id: \.objectID) { task in
+                    ForEach(tasks) { task in
                         TaskRow(task: task) {
                             toggle(task)
                         }
@@ -55,54 +50,48 @@ struct ListDetailView: View {
                     }
                     .onDelete(perform: deleteTasks)
                 }
-                .listStyle(PlainListStyle())
             }
         }
-        .navigationBarTitle(list.wrappedName, displayMode: .large)
-        .navigationBarItems(
-            trailing: HStack(spacing: 16) {
-                Button(action: { activeSheet = .editList }) {
-                    Image(systemName: "pencil")
+        .navigationTitle(list.wrappedName)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button("Edit List", systemImage: "pencil") {
+                    activeSheet = .editList
                 }
-                .accessibilityLabel("Edit list")
 
-                Button(action: { activeSheet = .newTask }) {
-                    Image(systemName: "plus.circle.fill")
+                Button("Create Task", systemImage: "plus") {
+                    activeSheet = .newTask
                 }
-                .accessibilityLabel("Create task")
             }
-        )
+        }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .editList:
                 ListEditorView(list: list)
-                    .environment(\.managedObjectContext, context)
             case .newTask:
                 TaskEditorView(defaultList: list)
-                    .environment(\.managedObjectContext, context)
             case .editTask(let task):
                 TaskEditorView(task: task, defaultList: list)
-                    .environment(\.managedObjectContext, context)
             }
         }
     }
 
     private func toggle(_ task: Task) {
         task.isComplete.toggle()
-        task.modified_date = Date()
+        task.modifiedDate = .now
         save()
     }
 
     private func deleteTasks(at offsets: IndexSet) {
-        offsets.map { tasks[$0] }.forEach(context.delete)
+        offsets.map { tasks[$0] }.forEach(modelContext.delete)
         save()
     }
 
     private func save() {
         do {
-            try context.save()
+            try modelContext.save()
         } catch {
-            context.rollback()
+            modelContext.rollback()
             assertionFailure("Unable to update task: \(error)")
         }
     }

@@ -1,85 +1,71 @@
-import CoreData
+import SwiftData
 import SwiftUI
-import UIKit
 
+@available(iOS 17.0, *)
 struct TaskEditorView: View {
-    @Environment(\.managedObjectContext) private var context
-    @Environment(\.presentationMode) private var presentationMode
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
 
-    @FetchRequest(
-        entity: List.entity(),
-        sortDescriptors: [NSSortDescriptor(key: "name", ascending: true)]
-    ) private var lists: FetchedResults<List>
+    @Query(sort: \List.name) private var lists: [List]
 
     private let task: Task?
     private let defaultList: List?
 
     @State private var title: String
     @State private var detail: String
-    @State private var selectedListURI: String
-
-    private static let inboxSelection = "__inbox__"
+    @State private var selectedListID: UUID?
 
     init(task: Task? = nil, defaultList: List? = nil) {
         self.task = task
         self.defaultList = defaultList
         _title = State(initialValue: task?.title ?? "")
         _detail = State(initialValue: task?.detail ?? "")
-
-        let initialList = task?.list ?? defaultList
-        _selectedListURI = State(
-            initialValue: initialList?.objectID.uriRepresentation().absoluteString ?? Self.inboxSelection
-        )
+        _selectedListID = State(initialValue: task?.list?.id ?? defaultList?.id)
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
-                Section(header: Text("Task")) {
+                Section("Task") {
                     TextField("Title", text: $title)
-                        .autocapitalization(.sentences)
+                        .textInputAutocapitalization(.sentences)
 
-                    Picker("List", selection: $selectedListURI) {
-                        Text("Inbox").tag(Self.inboxSelection)
-                        ForEach(lists, id: \.objectID) { list in
+                    Picker("List", selection: $selectedListID) {
+                        Text("Inbox").tag(Optional<UUID>.none)
+                        ForEach(lists) { list in
                             Text(list.wrappedName)
-                                .tag(list.objectID.uriRepresentation().absoluteString)
+                                .tag(Optional(list.id))
                         }
                     }
                 }
 
-                Section(header: Text("Notes")) {
-                    ZStack(alignment: .topLeading) {
-                        if detail.isEmpty {
-                            Text("Add notes")
-                                .foregroundColor(Color(UIColor.placeholderText))
-                                .padding(.top, 9)
-                                .padding(.leading, 5)
-                        }
-
-                        MultilineTextView(text: $detail)
-                            .frame(minHeight: 130)
-                    }
+                Section("Notes") {
+                    TextEditor(text: $detail)
+                        .frame(minHeight: 130)
                 }
 
-                if let task = task {
+                if let task {
                     Section {
                         Button(task.isComplete ? "Mark Incomplete" : "Mark Complete") {
                             task.isComplete.toggle()
-                            task.modified_date = Date()
+                            task.modifiedDate = .now
                             persistAndDismiss()
                         }
                     }
                 }
             }
-            .navigationBarTitle(task == nil ? "New Task" : "Edit Task", displayMode: .inline)
-            .navigationBarItems(
-                leading: Button("Cancel") { presentationMode.wrappedValue.dismiss() },
-                trailing: Button("Save", action: save)
-                    .disabled(trimmedTitle.isEmpty)
-            )
+            .navigationTitle(task == nil ? "New Task" : "Edit Task")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save", action: save)
+                        .disabled(trimmedTitle.isEmpty)
+                }
+            }
         }
-        .navigationViewStyle(StackNavigationViewStyle())
     }
 
     private var trimmedTitle: String {
@@ -89,75 +75,40 @@ struct TaskEditorView: View {
     private func save() {
         guard !trimmedTitle.isEmpty else { return }
 
-        let item = task ?? Task(context: context)
         let now = Date()
+        let trimmedDetail = detail.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if item.created_date == nil {
-            item.created_date = now
-        }
-        item.modified_date = now
-        item.title = trimmedTitle
-        item.detail = detail.trimmingCharacters(in: .whitespacesAndNewlines)
-        item.list = selectedList
-
-        if task == nil {
-            item.isComplete = false
+        if let task {
+            task.title = trimmedTitle
+            task.detail = trimmedDetail
+            task.list = selectedList
+            task.modifiedDate = now
+        } else {
+            let task = Task(
+                title: trimmedTitle,
+                detail: trimmedDetail,
+                createdDate: now,
+                modifiedDate: now,
+                list: selectedList
+            )
+            modelContext.insert(task)
         }
 
         persistAndDismiss()
     }
 
     private var selectedList: List? {
-        guard selectedListURI != Self.inboxSelection else { return nil }
-        return lists.first {
-            $0.objectID.uriRepresentation().absoluteString == selectedListURI
-        } ?? defaultList
+        guard let selectedListID else { return nil }
+        return lists.first { $0.id == selectedListID } ?? defaultList
     }
 
     private func persistAndDismiss() {
         do {
-            try context.save()
-            presentationMode.wrappedValue.dismiss()
+            try modelContext.save()
+            dismiss()
         } catch {
-            context.rollback()
+            modelContext.rollback()
             assertionFailure("Unable to save task: \(error)")
-        }
-    }
-}
-
-struct MultilineTextView: UIViewRepresentable {
-    @Binding var text: String
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
-    }
-
-    func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
-        textView.delegate = context.coordinator
-        textView.backgroundColor = .clear
-        textView.font = UIFont.preferredFont(forTextStyle: .body)
-        textView.adjustsFontForContentSizeCategory = true
-        textView.isScrollEnabled = true
-        textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
-        return textView
-    }
-
-    func updateUIView(_ uiView: UITextView, context: Context) {
-        if uiView.text != text {
-            uiView.text = text
-        }
-    }
-
-    final class Coordinator: NSObject, UITextViewDelegate {
-        @Binding private var text: String
-
-        init(text: Binding<String>) {
-            _text = text
-        }
-
-        func textViewDidChange(_ textView: UITextView) {
-            text = textView.text
         }
     }
 }

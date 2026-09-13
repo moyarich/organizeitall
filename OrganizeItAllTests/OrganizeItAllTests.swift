@@ -1,65 +1,80 @@
+import SwiftData
 import XCTest
 @testable import OrganizeItAll
 
+@available(iOS 17.0, *)
 final class OrganizeItAllTests: XCTestCase {
-    private var stack: CoreDataStack!
-
-    override func setUp() {
-        super.setUp()
-        stack = CoreDataStack(inMemory: true)
-    }
-
-    override func tearDown() {
-        stack = nil
-        super.tearDown()
+    private func makeContext() throws -> ModelContext {
+        let schema = Schema([
+            List.self,
+            Task.self,
+        ])
+        let configuration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: true
+        )
+        let container = try ModelContainer(
+            for: schema,
+            configurations: [configuration]
+        )
+        return ModelContext(container)
     }
 
     func testTaskCanBelongToList() throws {
-        let context = stack.viewContext
-        let list = List(context: context)
-        list.name = "Home"
+        let context = try makeContext()
+        let list = List(name: "Work")
+        let task = Task(title: "Ship release", list: list)
 
-        let task = Task(context: context)
-        task.title = "Replace air filter"
-        task.list = list
-        task.created_date = Date()
-        task.modified_date = Date()
-
+        context.insert(list)
+        context.insert(task)
         try context.save()
 
-        XCTAssertEqual(task.list?.wrappedName, "Home")
-        XCTAssertEqual(list.tasksArray.count, 1)
-        XCTAssertEqual(list.openTaskCount, 1)
+        XCTAssertEqual(task.list?.name, "Work")
+        XCTAssertTrue(list.tasks.contains(where: { $0.id == task.id }))
     }
 
-    func testDeletingListPreservesTaskInInbox() throws {
-        let context = stack.viewContext
-        let list = List(context: context)
-        list.name = "Errands"
+    func testTaskWithoutListIsInboxTask() throws {
+        let context = try makeContext()
+        let task = Task(title: "Call dentist")
 
-        let task = Task(context: context)
-        task.title = "Pick up groceries"
-        task.list = list
-
-        try context.save()
-        context.delete(list)
+        context.insert(task)
         try context.save()
 
         XCTAssertNil(task.list)
         XCTAssertEqual(task.listName, "Inbox")
     }
 
-    func testCompletedTaskIsNotCountedAsOpen() {
-        let context = stack.viewContext
-        let list = List(context: context)
-        list.name = "Work"
+    func testCompletionPersists() throws {
+        let context = try makeContext()
+        let task = Task(title: "Finish tests")
+        context.insert(task)
+        try context.save()
 
-        let task = Task(context: context)
-        task.title = "Ship release"
-        task.list = list
         task.isComplete = true
+        task.modifiedDate = .now
+        try context.save()
 
-        XCTAssertEqual(list.tasksArray.count, 1)
-        XCTAssertEqual(list.openTaskCount, 0)
+        let completed = try context.fetch(
+            FetchDescriptor<Task>(predicate: #Predicate { $0.isComplete })
+        )
+        XCTAssertEqual(completed.map(\.id), [task.id])
+    }
+
+    func testDeletingListMovesTaskToInbox() throws {
+        let context = try makeContext()
+        let list = List(name: "Errands")
+        let task = Task(title: "Buy milk", list: list)
+
+        context.insert(list)
+        context.insert(task)
+        try context.save()
+
+        context.delete(list)
+        try context.save()
+
+        let tasks = try context.fetch(FetchDescriptor<Task>())
+        XCTAssertEqual(tasks.count, 1)
+        XCTAssertNil(tasks.first?.list)
+        XCTAssertEqual(tasks.first?.listName, "Inbox")
     }
 }

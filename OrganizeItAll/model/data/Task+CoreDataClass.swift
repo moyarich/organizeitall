@@ -1,16 +1,32 @@
-//
-//  Task+CoreDataClass.swift
-//  OrganizeItAll
-//
-//  Created by MOYA RICHARDS on 3/14/20.
-//  Copyright © 2020 MOYA RICHARDS. All rights reserved.
-//
-//
-
 import Foundation
-import CoreData
+import SwiftData
 
-@objc(Task)
-public class Task: NSManagedObject {
+@available(iOS 17.0, *)
+@Model
+final class Task: Identifiable {
+    @Attribute(.unique) var id: UUID
+    var title: String
+    var detail: String
+    var isComplete: Bool
+    var createdDate: Date
+    var modifiedDate: Date
+    var list: List?
 
+    init(
+        id: UUID = UUID(),
+        title: String,
+        detail: String = "",
+        isComplete: Bool = false,
+        createdDate: Date = .now,
+        modifiedDate: Date = .now,
+        list: List? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.detail = detail
+        self.isComplete = isComplete
+        self.createdDate = createdDate
+        self.modifiedDate = modifiedDate
+        self.list = list
+    }
 }

@@ -1,64 +1,67 @@
-import CoreData
+import SwiftData
 import SwiftUI
 
+@available(iOS 17.0, *)
 struct ListsView: View {
-    @Environment(\.managedObjectContext) private var context
-
-    @FetchRequest(
-        entity: List.entity(),
-        sortDescriptors: [NSSortDescriptor(key: "modified_date", ascending: false)]
-    ) private var lists: FetchedResults<List>
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \List.modifiedDate, order: .reverse) private var lists: [List]
 
     @State private var showingNewList = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if lists.isEmpty {
-                    EmptyStateView(
+                    ContentUnavailableView(
+                        "No lists yet",
                         systemImage: "folder.badge.plus",
-                        title: "No lists yet",
-                        message: "Create a list to group related tasks, or use the Tasks tab for inbox items."
+                        description: Text("Create a list to group related tasks, or use the Tasks tab for inbox items.")
                     )
                 } else {
                     SwiftUI.List {
-                        ForEach(lists, id: \.objectID) { list in
-                            NavigationLink(destination: ListDetailView(list: list)) {
+                        ForEach(lists) { list in
+                            NavigationLink(value: list.id) {
                                 ListRow(list: list)
                             }
                         }
                         .onDelete(perform: deleteLists)
                     }
-                    .listStyle(PlainListStyle())
+                    .navigationDestination(for: UUID.self) { id in
+                        if let list = lists.first(where: { $0.id == id }) {
+                            ListDetailView(list: list)
+                        } else {
+                            ContentUnavailableView("List Not Found", systemImage: "exclamationmark.folder")
+                        }
+                    }
                 }
             }
-            .navigationBarTitle("Lists", displayMode: .large)
-            .navigationBarItems(
-                leading: EditButton(),
-                trailing: Button(action: { showingNewList = true }) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title3)
+            .navigationTitle("Lists")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    EditButton()
                 }
-                .accessibilityLabel("Create list")
-            )
-        }
-        .navigationViewStyle(StackNavigationViewStyle())
-        .sheet(isPresented: $showingNewList) {
-            ListEditorView()
-                .environment(\.managedObjectContext, context)
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Create List", systemImage: "plus") {
+                        showingNewList = true
+                    }
+                }
+            }
+            .sheet(isPresented: $showingNewList) {
+                ListEditorView()
+            }
         }
     }
 
     private func deleteLists(at offsets: IndexSet) {
-        offsets.map { lists[$0] }.forEach(context.delete)
+        offsets.map { lists[$0] }.forEach(modelContext.delete)
         save()
     }
 
     private func save() {
         do {
-            try context.save()
+            try modelContext.save()
         } catch {
-            context.rollback()
+            modelContext.rollback()
             assertionFailure("Unable to delete list: \(error)")
         }
     }

@@ -1,69 +1,88 @@
 # OrganizeItAll
 
-OrganizeItAll is a native iOS task organizer built with SwiftUI and Core Data. The project began as a UIKit / storyboard class project in 2020 and has been modernized while preserving its original Core Data entities so existing local data can continue to load.
+OrganizeItAll is a modern SwiftUI task organizer for iPhone and iPad. The original 2020 UIKit/Core Data school project has been resurrected as a SwiftUI + SwiftData application while keeping the original idea: organize tasks into lists, keep unfiled work in an Inbox, and quickly mark work complete.
 
-## What it does
+## Modern stack
 
-- Create and edit named lists.
-- Create tasks in a list or leave them in the Inbox.
-- Mark tasks complete or incomplete.
-- Search tasks by title, notes, or list name.
-- Filter tasks by All, Open, or Done.
-- Delete lists without deleting their tasks; orphaned tasks return to the Inbox.
-- Persist everything locally with Core Data.
+- SwiftUI for the application interface
+- SwiftData for persistence
+- `@Model` domain models with native relationships
+- `ModelContainer` / `ModelContext` for storage and writes
+- `@Query` for reactive list and task queries
+- `NavigationStack`, `.searchable`, modern toolbars, and SF Symbols
+- XCTest with an in-memory SwiftData container
 
-## Modernized architecture
+SwiftData is the only application persistence layer. `NSManagedObject`, `NSPersistentContainer`, `@FetchRequest`, and managed-object contexts are no longer used by the app.
 
-```text
-UIKit scene lifecycle
-        |
-        v
-UIHostingController
-        |
-        v
-SwiftUI
-  |- ListsView
-  |   |- ListDetailView
-  |   |- ListEditorView
-  |   `- TaskEditorView
-  `- AllTasksView
-        |
-        v
-NSManagedObjectContext
-        |
-        v
-Core Data
-  |- List
-  `- Task
-```
+## Features
 
-The app intentionally keeps the existing `List` and `Task` Core Data model instead of replacing persistence with SwiftData. That provides a safer migration path for data created by the original app.
+### Lists
 
-## Key improvements
+Create and edit named lists with optional descriptions. Each list shows its open and total task counts. Selecting a list opens its tasks.
 
-- Replaced the storyboard-driven task UI with SwiftUI.
-- Fixed the old list screen, which incorrectly fetched and edited `Task` objects.
-- Fixed generated model/property mismatches so Swift types match the `.xcdatamodel`.
-- Replaced the repeatedly-created persistent container with one shared `NSPersistentContainer`.
-- Added automatic lightweight migration settings and an in-memory store for tests.
-- Added list/task navigation, search, filtering, empty states, accessibility labels, and modern SF Symbols.
-- Added Core Data relationship tests.
-- Removed the app's dependency on `Main.storyboard`; the launch storyboard is retained.
+Deleting a list does **not** delete its tasks. SwiftData uses a nullify relationship rule, so those tasks move back to Inbox.
 
-## Run the app
+### Tasks
 
-1. Open `OrganizeItAll.xcodeproj` in Xcode.
-2. Select the `OrganizeItAll` scheme.
-3. Choose an iPhone or iPad simulator.
-4. Build and run with **Command-R**.
-5. Run unit tests with **Command-U**.
+Create, edit, complete, reopen, and delete tasks. Tasks can belong to a list or remain unassigned in Inbox.
 
-No third-party dependencies are required.
+The Tasks tab includes:
+
+- All / Open / Done filters
+- native searchable task filtering
+- search across title, notes, and list name
+- quick completion toggles
 
 ## Data model
 
-A `List` contains zero or more `Task` objects. A task may also have no list, in which case the UI presents it as an **Inbox** task. Deleting a list uses the existing nullify relationship behavior, so its tasks remain available instead of being destroyed.
+```text
+List
+├── id: UUID
+├── name: String
+├── detail: String
+├── createdDate: Date
+├── modifiedDate: Date
+└── tasks: [Task]
 
-## Next steps
+Task
+├── id: UUID
+├── title: String
+├── detail: String
+├── isComplete: Bool
+├── createdDate: Date
+├── modifiedDate: Date
+└── list: List?
+```
 
-Good follow-up improvements would be due dates and reminders, priorities, drag-and-drop ordering, widgets, iCloud/CloudKit sync, and a versioned Core Data model before adding new persisted fields.
+`List.tasks` and `Task.list` are inverse SwiftData relationships. Deleting a list nullifies `Task.list`, preserving the task as an Inbox item.
+
+## Requirements
+
+- Xcode 15 or newer
+- iOS 17 SDK or newer
+- Swift 5.9+
+
+The SwiftData experience is available on iOS 17 and later. The current legacy Xcode target still has an older deployment setting, so the scene bootstrap shows an upgrade message on older systems instead of attempting to initialize SwiftData.
+
+## Running
+
+1. Open `OrganizeItAll.xcodeproj` in Xcode.
+2. Select the `OrganizeItAll` scheme.
+3. Choose an iOS 17+ simulator or device.
+4. Build and run.
+
+No external packages or services are required.
+
+## Persistence migration note
+
+This modernization intentionally converts the project to SwiftData rather than retaining Core Data compatibility. Existing stores created by the 2020 Core Data build are not automatically imported into the new SwiftData store.
+
+For this repository, that tradeoff keeps the codebase genuinely modern instead of carrying both persistence frameworks indefinitely. If production users with valuable legacy data are discovered, a separate one-time import utility can be added without making Core Data the ongoing application persistence layer.
+
+## Next improvements
+
+- Raise the Xcode project deployment target to iOS 17 and remove the pre-iOS-17 fallback bootstrap.
+- Rename the remaining legacy source filenames left by the original Xcode project structure.
+- Add due dates, priorities, reminders, and manual ordering.
+- Add widgets and App Intents.
+- Add optional CloudKit-backed SwiftData sync.

@@ -1,6 +1,7 @@
-import CoreData
+import SwiftData
 import SwiftUI
 
+@available(iOS 17.0, *)
 private enum TaskSheet: Identifiable {
     case new
     case edit(Task)
@@ -8,47 +9,42 @@ private enum TaskSheet: Identifiable {
     var id: String {
         switch self {
         case .new:
-            return "new-task"
+            "new-task"
         case .edit(let task):
-            return "edit-\(task.objectID.uriRepresentation().absoluteString)"
+            "edit-\(task.id.uuidString)"
         }
     }
 }
 
+@available(iOS 17.0, *)
 struct AllTasksView: View {
-    @Environment(\.managedObjectContext) private var context
-
-    @FetchRequest(
-        entity: Task.entity(),
-        sortDescriptors: [NSSortDescriptor(key: "modified_date", ascending: false)]
-    ) private var tasks: FetchedResults<Task>
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Task.modifiedDate, order: .reverse) private var tasks: [Task]
 
     @State private var query = ""
     @State private var filter: TaskFilter = .open
     @State private var activeSheet: TaskSheet?
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 8) {
-                SearchField(text: $query)
-
                 Picker("Filter", selection: $filter) {
                     ForEach(TaskFilter.allCases, id: \.self) { filter in
                         Text(filter.rawValue).tag(filter)
                     }
                 }
-                .pickerStyle(SegmentedPickerStyle())
+                .pickerStyle(.segmented)
                 .padding(.horizontal)
 
                 if filteredTasks.isEmpty {
-                    EmptyStateView(
+                    ContentUnavailableView(
+                        emptyTitle,
                         systemImage: filter == .completed ? "checkmark.seal" : "checkmark.circle",
-                        title: emptyTitle,
-                        message: emptyMessage
+                        description: Text(emptyMessage)
                     )
                 } else {
                     SwiftUI.List {
-                        ForEach(filteredTasks, id: \.objectID) { task in
+                        ForEach(filteredTasks) { task in
                             TaskRow(task: task) {
                                 toggle(task)
                             }
@@ -59,34 +55,35 @@ struct AllTasksView: View {
                         }
                         .onDelete(perform: deleteTasks)
                     }
-                    .listStyle(PlainListStyle())
                 }
             }
-            .navigationBarTitle("Tasks", displayMode: .large)
-            .navigationBarItems(
-                leading: EditButton(),
-                trailing: Button(action: { activeSheet = .new }) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title3)
+            .navigationTitle("Tasks")
+            .searchable(text: $query, prompt: "Search tasks")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    EditButton()
                 }
-                .accessibilityLabel("Create task")
-            )
-        }
-        .navigationViewStyle(StackNavigationViewStyle())
-        .sheet(item: $activeSheet) { sheet in
-            switch sheet {
-            case .new:
-                TaskEditorView()
-                    .environment(\.managedObjectContext, context)
-            case .edit(let task):
-                TaskEditorView(task: task)
-                    .environment(\.managedObjectContext, context)
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Create Task", systemImage: "plus") {
+                        activeSheet = .new
+                    }
+                }
+            }
+            .sheet(item: $activeSheet) { sheet in
+                switch sheet {
+                case .new:
+                    TaskEditorView()
+                case .edit(let task):
+                    TaskEditorView(task: task)
+                }
             }
         }
     }
 
     private var filteredTasks: [Task] {
-        tasks.filter { task in
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        return tasks.filter { task in
             let matchesFilter: Bool
             switch filter {
             case .all:
@@ -98,9 +95,8 @@ struct AllTasksView: View {
             }
 
             guard matchesFilter else { return false }
-            guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return true }
+            guard !needle.isEmpty else { return true }
 
-            let needle = query.lowercased()
             return task.wrappedTitle.lowercased().contains(needle)
                 || task.wrappedDetail.lowercased().contains(needle)
                 || task.listName.lowercased().contains(needle)
@@ -127,21 +123,21 @@ struct AllTasksView: View {
 
     private func toggle(_ task: Task) {
         task.isComplete.toggle()
-        task.modified_date = Date()
+        task.modifiedDate = .now
         save()
     }
 
     private func deleteTasks(at offsets: IndexSet) {
         let visibleTasks = filteredTasks
-        offsets.map { visibleTasks[$0] }.forEach(context.delete)
+        offsets.map { visibleTasks[$0] }.forEach(modelContext.delete)
         save()
     }
 
     private func save() {
         do {
-            try context.save()
+            try modelContext.save()
         } catch {
-            context.rollback()
+            modelContext.rollback()
             assertionFailure("Unable to update tasks: \(error)")
         }
     }

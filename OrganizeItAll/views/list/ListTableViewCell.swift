@@ -1,7 +1,8 @@
 import SwiftUI
 
+@available(iOS 17.0, *)
 struct ListRow: View {
-    @ObservedObject var list: List
+    let list: List
 
     var body: some View {
         HStack(spacing: 14) {
@@ -11,24 +12,23 @@ struct ListRow: View {
                     .frame(width: 42, height: 42)
 
                 Image(systemName: "folder.fill")
-                    .foregroundColor(.brandAccent)
+                    .foregroundStyle(Color.brandAccent)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(list.wrappedName)
                     .font(.headline)
-                    .foregroundColor(.primary)
 
                 if !list.wrappedDetail.isEmpty {
                     Text(list.wrappedDetail)
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
 
                 Text(summary)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -38,7 +38,7 @@ struct ListRow: View {
     }
 
     private var summary: String {
-        let total = list.tasksArray.count
+        let total = list.tasks.count
         let open = list.openTaskCount
         if total == 0 { return "No tasks" }
         return "\(open) open · \(total) total"

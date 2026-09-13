@@ -1,20 +1,19 @@
 import SwiftUI
 
+@available(iOS 17.0, *)
 struct OrganizeItAllRootView: View {
     var body: some View {
         TabView {
             ListsView()
                 .tabItem {
-                    Image(systemName: "folder")
-                    Text("Lists")
+                    Label("Lists", systemImage: "folder")
                 }
 
             AllTasksView()
                 .tabItem {
-                    Image(systemName: "checkmark.circle")
-                    Text("Tasks")
+                    Label("Tasks", systemImage: "checkmark.circle")
                 }
         }
-        .accentColor(.brandAccent)
+        .tint(.brandAccent)
     }
 }
