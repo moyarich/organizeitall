@@ -7,28 +7,30 @@ This guide describes the clean SwiftUI + SwiftData implementation on `modernize/
 - SwiftUI application lifecycle
 - SwiftData persistence
 - Swift 6 language mode
-- Complete concurrency checking
+- complete concurrency checking
 - iOS / iPadOS 17.0+
 - Swift Testing
-- No third-party dependencies
+- native Material Design 3 design system
+- no third-party dependencies
 
 ## Source structure
 
 ```text
 OrganizeItAll/
-├── App/                 # application entry point and top-level navigation
+├── App/                 # app entry point and top-level navigation
+├── DesignSystem/        # Material 3 tokens and reusable components
 ├── Models/              # persisted models and persisted value types
 ├── Features/
-│   ├── TaskLists/       # list screens and components
-│   └── Tasks/           # task screens, components, and filters
-└── Resources/           # asset catalogs
+│   ├── TaskLists/       # list screens and presentation components
+│   └── Tasks/           # task screens, presentation components, and filters
+└── Resources/           # branded/custom assets only
 ```
 
-Names describe their responsibility. Do not reintroduce legacy names such as `ViewController`, `CoreDataStack`, `List+CoreDataClass`, or generic names such as `RootView` when a more specific domain name is available.
+Names describe responsibility. Do not reintroduce legacy names such as `ViewController`, `CoreDataStack`, `List+CoreDataClass`, or generic names such as `RootView` when a more specific domain name is available.
 
 ## Application lifecycle
 
-`OrganizeItAllApp` is the only app entry point. It attaches the SwiftData container at the scene level:
+`OrganizeItAllApp` is the only app entry point. It applies the Material theme at the root and attaches the SwiftData container at the scene level:
 
 ```swift
 @main
@@ -36,6 +38,7 @@ struct OrganizeItAllApp: App {
     var body: some Scene {
         WindowGroup {
             MainTabView()
+                .materialTheme()
         }
         .modelContainer(for: [TaskList.self, TaskItem.self])
     }
@@ -43,6 +46,51 @@ struct OrganizeItAllApp: App {
 ```
 
 There is no app delegate, scene delegate, storyboard, or Core Data stack.
+
+## Material Design 3
+
+The Material implementation is intentionally native SwiftUI. Do not add an Android/Compose dependency or a third-party Material framework just to reproduce Material components.
+
+### Theme tokens
+
+`DesignSystem/MaterialTheme.swift` owns:
+
+- semantic light/dark color roles
+- type-scale tokens
+- shape tokens
+- the `materialColors` environment value
+- the root `materialTheme()` modifier
+
+Feature code should use semantic roles such as `primary`, `surfaceContainer`, `onSurfaceVariant`, and `errorContainer` rather than embedding arbitrary colors.
+
+### Components
+
+`DesignSystem/MaterialComponents.swift` owns reusable UI primitives currently needed by the app:
+
+- `MaterialCard`
+- `MaterialFloatingActionButton`
+- `MaterialSearchBar`
+- `MaterialFilterChip`
+- `MaterialTextField`
+- `MaterialMultilineField`
+- `MaterialEmptyState`
+- `MaterialNavigationBarItem`
+- `MaterialSectionTitle`
+
+Add a reusable component only when at least one product screen needs a stable Material behavior or visual contract. Avoid creating wrappers around every SwiftUI primitive.
+
+### Platform adaptation
+
+Material semantics are adapted to iOS rather than copied mechanically:
+
+- system fonts are used with Material type-scale sizing instead of bundling Roboto
+- SF Symbols are used for standard icons
+- SwiftUI sheets, pickers, toggles, and date pickers retain native interaction behavior
+- Material color, shape, surface, chip, field, FAB, and navigation hierarchy define the visual language
+
+### Dark mode
+
+`materialTheme()` chooses the light or dark Material color scheme from the SwiftUI `colorScheme` environment. Screens and reusable components should therefore consume semantic Material roles rather than branching on dark mode themselves.
 
 ## Models
 
@@ -69,14 +117,14 @@ Use `setCompleted(_:)` instead of setting `isCompleted` directly so `completedAt
 
 ## Views
 
-Feature folders should contain feature-specific SwiftUI views only.
+Feature folders contain product-specific SwiftUI views only. Reusable visual primitives belong in `DesignSystem`.
 
 - `TaskListsView` owns top-level list browsing.
 - `TaskListDetailView` owns tasks for one list.
-- `TaskListEditorView` owns create/edit list input.
+- `TaskListEditorView` owns create/edit/delete list input.
 - `TasksView` owns global task search/filtering.
-- `TaskEditorView` owns create/edit task input.
-- row views are small presentation components.
+- `TaskEditorView` owns create/edit/delete task input.
+- row views render domain content inside Material cards.
 
 Keep navigation state close to the screen that owns it. Do not add coordinator/view-model layers unless state or behavior actually outgrows the view.
 
@@ -122,25 +170,11 @@ xcodebuild \
   clean build
 ```
 
-## Persisted model changes
-
-Once real users have SwiftData stores, schema changes require migration discipline.
-
-For additive changes:
-
-1. Add the property with a safe default or optional value.
-2. Add model tests.
-3. Test upgrading an installed development build.
-
-For destructive or semantic changes, introduce a versioned SwiftData schema and migration plan.
-
-Do not bring Core Data back into the runtime to support the 2020 implementation. If historical data must be imported, use a separate one-time migration path.
-
 ## Resource policy
 
-Use SF Symbols for standard interface icons. Keep the asset catalog only for branded/custom artwork that is actually used. The current catalog contains the app icon only.
+Use SF Symbols for standard interface icons. Keep the asset catalog only for branded/custom artwork that is actually used.
 
-Do not add raster copies of system icons such as add, back, edit, trash, calendar, or checkmark icons.
+Do not add raster copies of system icons such as add, back, edit, trash, calendar, folder, or checkmark icons.
 
 ## Before opening a PR
 
@@ -148,6 +182,8 @@ Verify:
 
 - simulator build succeeds
 - tests pass
+- light and dark appearance both remain readable
+- Material color roles are used instead of feature-local hard-coded colors
 - create/edit/delete list
 - create/edit/delete task
 - Inbox assignment
@@ -157,4 +193,4 @@ Verify:
 - due date and overdue state
 - search and Open / All / Done filters
 - deleting a list preserves its tasks
-- no new unused assets or misleading filenames were introduced
+- no unused assets, duplicate design tokens, or misleading filenames were introduced

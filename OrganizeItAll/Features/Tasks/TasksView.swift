@@ -14,6 +14,7 @@ private enum TaskSheet: Identifiable {
 }
 
 struct TasksView: View {
+    @Environment(\.materialColors) private var colors
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.modifiedAt, order: .reverse) private var tasks: [TaskItem]
 
@@ -23,49 +24,64 @@ struct TasksView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 8) {
-                Picker("Task Filter", selection: $filter) {
-                    ForEach(TaskFilter.allCases) { filter in
-                        Text(filter.rawValue).tag(filter)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
+            ZStack(alignment: .bottomTrailing) {
+                colors.surface.ignoresSafeArea()
 
-                if filteredTasks.isEmpty {
-                    ContentUnavailableView(
-                        emptyTitle,
-                        systemImage: emptySystemImage,
-                        description: Text(emptyMessage)
-                    )
-                } else {
-                    List {
-                        ForEach(filteredTasks) { task in
-                            TaskRow(task: task) {
-                                task.setCompleted(!task.isCompleted)
-                                saveChanges()
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        Text("Tasks")
+                            .font(MaterialTypography.headlineLarge)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.bottom, 8)
+
+                        MaterialSearchBar(text: $searchText, prompt: "Search tasks")
+
+                        HStack(spacing: 8) {
+                            ForEach(TaskFilter.allCases) { option in
+                                MaterialFilterChip(
+                                    title: option.rawValue,
+                                    systemImage: nil,
+                                    isSelected: filter == option
+                                ) {
+                                    filter = option
+                                }
                             }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                activeSheet = .edit(task)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.vertical, 4)
+
+                        if filteredTasks.isEmpty {
+                            MaterialEmptyState(
+                                title: emptyTitle,
+                                message: emptyMessage,
+                                systemImage: emptySystemImage
+                            )
+                        } else {
+                            ForEach(filteredTasks) { task in
+                                MaterialCard {
+                                    TaskRow(task: task) {
+                                        task.setCompleted(!task.isCompleted)
+                                        saveChanges()
+                                    }
+                                }
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    activeSheet = .edit(task)
+                                }
                             }
                         }
-                        .onDelete(perform: deleteTasks)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+                    .padding(.bottom, 96)
                 }
+
+                MaterialFloatingActionButton(title: "New task", systemImage: "plus") {
+                    activeSheet = .newTask
+                }
+                .padding(20)
             }
-            .navigationTitle("Tasks")
-            .searchable(text: $searchText, prompt: "Search tasks, notes, or lists")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    EditButton()
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("New Task", systemImage: "plus") {
-                        activeSheet = .newTask
-                    }
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $activeSheet) { sheet in
                 switch sheet {
                 case .newTask:
@@ -99,12 +115,12 @@ struct TasksView: View {
     }
 
     private var emptyTitle: String {
-        if !searchText.isEmpty { return "No Matching Tasks" }
+        if !searchText.isEmpty { return "No matching tasks" }
 
         return switch filter {
-        case .open: "You're All Caught Up"
-        case .all: "No Tasks Yet"
-        case .completed: "Nothing Completed Yet"
+        case .open: "You're all caught up"
+        case .all: "No tasks yet"
+        case .completed: "Nothing completed yet"
         }
     }
 
@@ -120,14 +136,6 @@ struct TasksView: View {
         case .all: "Create your first task to get organized."
         case .completed: "Completed tasks will appear here."
         }
-    }
-
-    private func deleteTasks(at offsets: IndexSet) {
-        let visibleTasks = filteredTasks
-        for index in offsets {
-            modelContext.delete(visibleTasks[index])
-        }
-        saveChanges()
     }
 
     private func saveChanges() {

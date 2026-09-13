@@ -1,8 +1,8 @@
 # OrganizeItAll
 
-OrganizeItAll is a native iPhone and iPad task organizer built with **SwiftUI**, **SwiftData**, and **Swift 6**.
+OrganizeItAll is a native iPhone and iPad task organizer built with **SwiftUI**, **SwiftData**, **Swift 6**, and a native **Material Design 3** design system.
 
-The original repository was a 2020 UIKit/Core Data project. The `modernize/swiftui-coredata` branch is a clean modern implementation: there are no UIKit view controllers, storyboards, Core Data model files, generated Core Data classes, or legacy image-button assets in the application target.
+The original repository was a 2020 UIKit/Core Data project. The `modernize/swiftui-coredata` branch is a clean modern implementation with no UIKit view controllers, storyboards, Core Data model files, generated Core Data classes, or legacy image-button assets in the application target.
 
 ## Features
 
@@ -15,6 +15,25 @@ The original repository was a 2020 UIKit/Core Data project. The `modernize/swift
 - Search titles, notes, and list names.
 - Filter tasks by **Open / All / Done**.
 - Deleting a list preserves its tasks by moving them back to Inbox.
+- Light and dark Material 3 color schemes.
+
+## UI / design system
+
+The interface uses an iOS-native Material Design 3 adaptation implemented directly in SwiftUI. There is no Android/Compose runtime and no third-party Material package.
+
+The design system includes:
+
+- Material 3 semantic color roles and light/dark schemes
+- Material type-scale tokens using the system font
+- Material shape tokens
+- container cards and surfaces
+- extended floating action buttons
+- filter chips
+- filled text fields
+- search bars
+- Material-style bottom navigation
+- tonal metadata and action surfaces
+- SF Symbols for platform-native iconography
 
 ## Stack
 
@@ -23,6 +42,7 @@ The original repository was a 2020 UIKit/Core Data project. The `modernize/swift
 - Swift 6 language mode with complete concurrency checking
 - iOS / iPadOS 17.0+
 - Swift Testing
+- Material Design 3-inspired SwiftUI design system
 - SF Symbols
 - No third-party dependencies
 
@@ -33,6 +53,9 @@ OrganizeItAll/
 ├── App/
 │   ├── OrganizeItAllApp.swift
 │   └── MainTabView.swift
+├── DesignSystem/
+│   ├── MaterialTheme.swift
+│   └── MaterialComponents.swift
 ├── Models/
 │   ├── TaskItem.swift
 │   ├── TaskList.swift
@@ -88,15 +111,9 @@ xcodebuild \
 
 ### Tests
 
-List available simulators:
-
 ```bash
 xcrun simctl list devices available
-```
 
-Then run:
-
-```bash
 xcodebuild test \
   -project OrganizeItAll.xcodeproj \
   -scheme OrganizeItAll \
@@ -114,4 +131,4 @@ The old 2020 Core Data store is intentionally not part of the modern runtime. If
 
 ## Developer guide
 
-See [README-DEV.md](README-DEV.md) for architecture, conventions, testing, and development commands.
+See [README-DEV.md](README-DEV.md) for architecture, Material 3 conventions, testing, persistence rules, and development commands.

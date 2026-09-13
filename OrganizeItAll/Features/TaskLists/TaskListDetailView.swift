@@ -16,45 +16,52 @@ private enum TaskListSheet: Identifiable {
 }
 
 struct TaskListDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.materialColors) private var colors
     @Environment(\.modelContext) private var modelContext
     let list: TaskList
     @State private var activeSheet: TaskListSheet?
 
     var body: some View {
-        Group {
-            if list.tasks.isEmpty {
-                ContentUnavailableView(
-                    "No Tasks in This List",
-                    systemImage: "checkmark.circle",
-                    description: Text("Add a task to \(list.displayName).")
-                )
-            } else {
-                List {
-                    ForEach(list.sortedTasks) { task in
-                        TaskRow(task: task) {
-                            task.setCompleted(!task.isCompleted)
-                            saveChanges()
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            activeSheet = .editTask(task)
+        ZStack(alignment: .bottomTrailing) {
+            colors.surface.ignoresSafeArea()
+
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    header
+
+                    if list.tasks.isEmpty {
+                        MaterialEmptyState(
+                            title: "No tasks in this list",
+                            message: "Add a task to \(list.displayName).",
+                            systemImage: "checkmark.circle"
+                        )
+                    } else {
+                        ForEach(list.sortedTasks) { task in
+                            MaterialCard {
+                                TaskRow(task: task) {
+                                    task.setCompleted(!task.isCompleted)
+                                    saveChanges()
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                activeSheet = .editTask(task)
+                            }
                         }
                     }
-                    .onDelete(perform: deleteTasks)
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 96)
             }
-        }
-        .navigationTitle(list.displayName)
-        .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Button("Edit List", systemImage: "pencil") {
-                    activeSheet = .editList
-                }
-                Button("New Task", systemImage: "plus") {
-                    activeSheet = .newTask
-                }
+
+            MaterialFloatingActionButton(title: "New task", systemImage: "plus") {
+                activeSheet = .newTask
             }
+            .padding(20)
         }
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .editList:
@@ -67,12 +74,42 @@ struct TaskListDetailView: View {
         }
     }
 
-    private func deleteTasks(at offsets: IndexSet) {
-        let visibleTasks = list.sortedTasks
-        for index in offsets {
-            modelContext.delete(visibleTasks[index])
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Button("Back", systemImage: "chevron.left") {
+                    dismiss()
+                }
+                .labelStyle(.iconOnly)
+                .font(.title3.bold())
+                .foregroundStyle(colors.onSurface)
+
+                Spacer()
+
+                Button("Edit", systemImage: "pencil") {
+                    activeSheet = .editList
+                }
+                .font(MaterialTypography.labelLarge)
+                .foregroundStyle(colors.primary)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(list.displayName)
+                    .font(MaterialTypography.headlineLarge)
+
+                if !list.displayNotes.isEmpty {
+                    Text(list.displayNotes)
+                        .font(MaterialTypography.bodyLarge)
+                        .foregroundStyle(colors.onSurfaceVariant)
+                }
+
+                Text("\(list.openTaskCount) open · \(list.tasks.count) total")
+                    .font(MaterialTypography.labelLarge)
+                    .foregroundStyle(colors.primary)
+            }
         }
-        saveChanges()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, 8)
     }
 
     private func saveChanges() {

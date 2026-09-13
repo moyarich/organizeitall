@@ -1,33 +1,40 @@
 import SwiftUI
 
 struct TaskListRow: View {
+    @Environment(\.materialColors) private var colors
     let list: TaskList
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 16) {
             Image(systemName: "folder.fill")
-                .font(.title2)
-                .foregroundStyle(.indigo)
-                .frame(width: 38, height: 38)
-                .background(.indigo.opacity(0.12), in: Circle())
+                .font(.system(size: 22, weight: .medium))
+                .foregroundStyle(colors.onPrimaryContainer)
+                .frame(width: 48, height: 48)
+                .background(colors.primaryContainer, in: RoundedRectangle(cornerRadius: MaterialShape.medium, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(list.displayName)
-                    .font(.headline)
+                    .font(MaterialTypography.titleMedium)
+                    .foregroundStyle(colors.onSurface)
 
                 if !list.displayNotes.isEmpty {
                     Text(list.displayNotes)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(MaterialTypography.bodyMedium)
+                        .foregroundStyle(colors.onSurfaceVariant)
                         .lineLimit(1)
                 }
 
                 Text(summary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(MaterialTypography.labelMedium)
+                    .foregroundStyle(colors.onSurfaceVariant)
             }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundStyle(colors.onSurfaceVariant)
         }
-        .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
     }
 

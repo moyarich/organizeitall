@@ -2,62 +2,55 @@ import SwiftData
 import SwiftUI
 
 struct TaskListsView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.materialColors) private var colors
     @Query(sort: \TaskList.modifiedAt, order: .reverse) private var lists: [TaskList]
     @State private var isPresentingNewList = false
 
     var body: some View {
         NavigationStack {
-            Group {
-                if lists.isEmpty {
-                    ContentUnavailableView(
-                        "No Lists Yet",
-                        systemImage: "folder.badge.plus",
-                        description: Text("Create a list to organize related tasks. Unfiled tasks stay in Inbox.")
-                    )
-                } else {
-                    List {
-                        ForEach(lists) { list in
-                            NavigationLink {
-                                TaskListDetailView(list: list)
-                            } label: {
-                                TaskListRow(list: list)
+            ZStack(alignment: .bottomTrailing) {
+                colors.surface.ignoresSafeArea()
+
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        Text("Lists")
+                            .font(MaterialTypography.headlineLarge)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.bottom, 8)
+
+                        if lists.isEmpty {
+                            MaterialEmptyState(
+                                title: "No lists yet",
+                                message: "Create a list to organize related tasks. Unfiled tasks stay in Inbox.",
+                                systemImage: "folder.badge.plus"
+                            )
+                        } else {
+                            ForEach(lists) { list in
+                                NavigationLink {
+                                    TaskListDetailView(list: list)
+                                } label: {
+                                    MaterialCard {
+                                        TaskListRow(list: list)
+                                    }
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
-                        .onDelete(perform: deleteLists)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+                    .padding(.bottom, 96)
                 }
+
+                MaterialFloatingActionButton(title: "New list", systemImage: "plus") {
+                    isPresentingNewList = true
+                }
+                .padding(20)
             }
-            .navigationTitle("Lists")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    EditButton()
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("New List", systemImage: "plus") {
-                        isPresentingNewList = true
-                    }
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $isPresentingNewList) {
                 TaskListEditorView()
             }
-        }
-    }
-
-    private func deleteLists(at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(lists[index])
-        }
-        saveChanges()
-    }
-
-    private func saveChanges() {
-        do {
-            try modelContext.save()
-        } catch {
-            modelContext.rollback()
-            assertionFailure("Unable to save list changes: \(error)")
         }
     }
 }
