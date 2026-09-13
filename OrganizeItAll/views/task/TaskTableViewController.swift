@@ -1,200 +1,148 @@
-//
-//  OrganizeTableViewController.swift
-//  OrganizeItAll
-//
-//  Created by MOYA RICHARDS on 3/8/20.
-//  Copyright © 2020 MOYA RICHARDS. All rights reserved.
-//
-
-
-
-import UIKit
 import CoreData
+import SwiftUI
 
-class TaskTableViewController: UITableViewController {
+private enum TaskSheet: Identifiable {
+    case new
+    case edit(Task)
 
-    
- 
-    var resultsController: NSFetchedResultsController<Task>!
-    let coreDataStack = CoreDataStack()
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        
-        // Request
-        let request: NSFetchRequest<Task> = Task.fetchRequest()
-        let sortDescriptors = NSSortDescriptor(key: "modified_date", ascending: false)
-        
-        // Setup sorting
-        request.sortDescriptors = [sortDescriptors]
-        request.fetchBatchSize = 20
-        
-        resultsController = NSFetchedResultsController(
-            fetchRequest: request,
-            managedObjectContext: coreDataStack.managedContext,
-            sectionNameKeyPath: nil,
-            cacheName: nil
-        )
-        resultsController.delegate = self
-        
-        // Fetch data
-        do {
-            try resultsController.performFetch()
-        } catch {
-            print("Fetch error: \(error)")
+    var id: String {
+        switch self {
+        case .new:
+            return "new-task"
+        case .edit(let task):
+            return "edit-\(task.objectID.uriRepresentation().absoluteString)"
         }
     }
-
-    // MARK: - Table view data source
-    /**
-    https://www.hackingwithswift.com/read/38/10/optimizing-core-data-performance-using-nsfetchedresultscontroller
-     */
-    
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return resultsController.sections?[section].numberOfObjects ?? 0
-    }
-
-    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        
-        let cell = tableView.dequeueReusableCell(withIdentifier: "tasktbcell", for: indexPath) as! TaskTableViewCell
-
-        // Configure the cell...
-        return configureTableCell(cell:cell,at: indexPath)
-    }
-    
-    /**
-     Displays the task data in the table cell
-     */
-    func configureTableCell(cell : TaskTableViewCell, at indexPath: IndexPath) -> TaskTableViewCell {
-        let task = resultsController.object(at: indexPath)
-        
-        //2d Quartz graphics (IOS core graphics)
-        cell.drawCircle()
-        
-        cell.lblText?.text = task.title
-        
-        
-        if task.isComplete == true {
-            cell.contentView.backgroundColor = UIColor(red: 234.0/255.0, green: 141.0/255.0,blue: 138.0/255.0, alpha: 1)
-            cell.tintColor =  UIColor(red: 226.0/255.0, green: 185.0/255.0,blue: 199.0/255.0, alpha: 1.0)
-            cell.accessoryType = .checkmark
-        } else {
-            cell.accessoryType = .none
-        }
-        cell.layer.backgroundColor =  UIColor(red: 204.0/255.0, green: 204.0/255.0,blue: 204.0/255.0, alpha: 0).cgColor
-        return cell
-    }
-    
-    // MARK: - Table view delegate
-    
-    //swipe direction: left
-    override func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-        let action = UIContextualAction(style: .destructive, title: "Delete") { (action, view, completion) in
-            
-            
-            let task = self.resultsController.object(at: indexPath)
-            self.resultsController.managedObjectContext.delete(task)
-            do {
-                try self.resultsController.managedObjectContext.save()
-                completion(true)
-            } catch {
-                print("trailing swipe failed - delete: \(error)")
-                completion(false)
-            }
-        }
-        action.image = #imageLiteral(resourceName: "trash")
-        action.backgroundColor = .red
-        
-        return UISwipeActionsConfiguration(actions: [action])
-    }
-    
-    //swipe direction: right
-    override func tableView(_ tableView: UITableView, leadingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-        let action = UIContextualAction(style: .destructive, title: "Complete") { (action, view, completion) in
-            
-            
-            let task = self.resultsController.object(at: indexPath)
-            task.isComplete = true
-           
-            do {
-                try self.resultsController.managedObjectContext.save()
-                completion(true)
-            } catch {
-                print("leading swipe failed - complete: \(error)")
-                completion(false)
-            }
-        }
-        action.image = #imageLiteral(resourceName: "check")
-        action.backgroundColor = .green
-        
-        return UISwipeActionsConfiguration(actions: [action])
-    }
-    
-    
-    // MARK: - Navigation
-    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        performSegue(withIdentifier: "showAddTask", sender: tableView.cellForRow(at: indexPath))
-    }
-    
-
-     // In a storyboard-based application, you will often want to do a little preparation before navigation
-     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        
-        //new task
-        if let _ = sender as? UIBarButtonItem, let vc = segue.destination as? CreateTaskViewController {
-            vc.managedContext = resultsController.managedObjectContext
-        }
-        
-        //modify existing task
-        if let cell = sender as? UITableViewCell, let vc = segue.destination as? CreateTaskViewController {
-            vc.managedContext = resultsController.managedObjectContext
-            if let indexPath = tableView.indexPath(for: cell) {
-                let task = resultsController.object(at: indexPath)
-                vc.task = task
-                
-                //add view to back button if view is not being presented modally
-                    //self.navigationController?.pushViewController(vc, animated: true)
-            }
-        }
-     }
 }
 
-extension TaskTableViewController: NSFetchedResultsControllerDelegate {
-    func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-        tableView.beginUpdates()
+struct AllTasksView: View {
+    @Environment(\.managedObjectContext) private var context
+
+    @FetchRequest(
+        entity: Task.entity(),
+        sortDescriptors: [NSSortDescriptor(key: "modified_date", ascending: false)]
+    ) private var tasks: FetchedResults<Task>
+
+    @State private var query = ""
+    @State private var filter: TaskFilter = .open
+    @State private var activeSheet: TaskSheet?
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 8) {
+                SearchField(text: $query)
+
+                Picker("Filter", selection: $filter) {
+                    ForEach(TaskFilter.allCases, id: \.self) { filter in
+                        Text(filter.rawValue).tag(filter)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding(.horizontal)
+
+                if filteredTasks.isEmpty {
+                    EmptyStateView(
+                        systemImage: filter == .completed ? "checkmark.seal" : "checkmark.circle",
+                        title: emptyTitle,
+                        message: emptyMessage
+                    )
+                } else {
+                    SwiftUI.List {
+                        ForEach(filteredTasks, id: \.objectID) { task in
+                            TaskRow(task: task) {
+                                toggle(task)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                activeSheet = .edit(task)
+                            }
+                        }
+                        .onDelete(perform: deleteTasks)
+                    }
+                    .listStyle(PlainListStyle())
+                }
+            }
+            .navigationBarTitle("Tasks", displayMode: .large)
+            .navigationBarItems(
+                leading: EditButton(),
+                trailing: Button(action: { activeSheet = .new }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                }
+                .accessibilityLabel("Create task")
+            )
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .new:
+                TaskEditorView()
+                    .environment(\.managedObjectContext, context)
+            case .edit(let task):
+                TaskEditorView(task: task)
+                    .environment(\.managedObjectContext, context)
+            }
+        }
     }
-    
-    func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-        tableView.endUpdates()
-        tableView.reloadData()
+
+    private var filteredTasks: [Task] {
+        tasks.filter { task in
+            let matchesFilter: Bool
+            switch filter {
+            case .all:
+                matchesFilter = true
+            case .open:
+                matchesFilter = !task.isComplete
+            case .completed:
+                matchesFilter = task.isComplete
+            }
+
+            guard matchesFilter else { return false }
+            guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return true }
+
+            let needle = query.lowercased()
+            return task.wrappedTitle.lowercased().contains(needle)
+                || task.wrappedDetail.lowercased().contains(needle)
+                || task.listName.lowercased().contains(needle)
+        }
     }
-    
-    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
-        
-       switch type {
-        case .insert:
-            if let indexPath = newIndexPath {
-                tableView.insertRows(at: [indexPath], with: .automatic)
-                
-                
-                let task = resultsController.object(at: indexPath)
-                print("---- inserting \(task.title)")
-            }
-        case .delete:
-            if let indexPath = indexPath {
-                tableView.deleteRows(at: [indexPath], with: .automatic)
-            }
-        case .update:
-            if let indexPath = indexPath, let cell = tableView.cellForRow(at: indexPath)  as! TaskTableViewCell? {
-                let task = resultsController.object(at: indexPath)
-            
-                // Configure the cell...
-                configureTableCell(cell:cell,at: indexPath)
-                
-                print("---- updating \(task.title)")
-            }
-        default:
-            break
+
+    private var emptyTitle: String {
+        if !query.isEmpty { return "No matching tasks" }
+        switch filter {
+        case .all: return "No tasks yet"
+        case .open: return "You're all caught up"
+        case .completed: return "Nothing completed yet"
+        }
+    }
+
+    private var emptyMessage: String {
+        if !query.isEmpty { return "Try a different title, note, or list name." }
+        switch filter {
+        case .all: return "Create a task to start organizing your work."
+        case .open: return "Add a task whenever something new needs your attention."
+        case .completed: return "Completed tasks will appear here."
+        }
+    }
+
+    private func toggle(_ task: Task) {
+        task.isComplete.toggle()
+        task.modified_date = Date()
+        save()
+    }
+
+    private func deleteTasks(at offsets: IndexSet) {
+        let visibleTasks = filteredTasks
+        offsets.map { visibleTasks[$0] }.forEach(context.delete)
+        save()
+    }
+
+    private func save() {
+        do {
+            try context.save()
+        } catch {
+            context.rollback()
+            assertionFailure("Unable to update tasks: \(error)")
         }
     }
 }

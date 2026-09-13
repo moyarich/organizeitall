@@ -1,124 +1,163 @@
-//
-//  CreateItemViewController.swift
-//  OrganizeItAll
-//
-//  Created by MOYA RICHARDS on 3/8/20.
-//  Copyright © 2020 MOYA RICHARDS. All rights reserved.
-//
-
-import UIKit
 import CoreData
+import SwiftUI
+import UIKit
 
-class CreateTaskViewController: UIViewController {
-    
-    @IBOutlet weak var lblHeader: UILabel!
-    
-    //MARK: - Segue data
-    var managedContext: NSManagedObjectContext!
-    
-    var task: Task?
-    
-    //MARK: - Outlets
-    @IBOutlet weak var btnSave: UIButton!
-    
-    @IBOutlet weak var tfTitle: UITextField!
-    @IBOutlet weak var tvDescription: UITextView!
-    
-    //Detail Input Bottom Contraint - matched the keyboard height
-    @IBOutlet weak var constraintFromKyHeight: NSLayoutConstraint!
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow), name: UIResponder.keyboardWillShowNotification, object: nil)
-        
-        
-        tfTitle.becomeFirstResponder()
-        
-        
-        if let task = task {
-            tfTitle.text = task.title
-            tvDescription.text = task.detail
-            lblHeader.text = "Edit Task"
-        }else{
-            lblHeader.text = "Create New Task"
-        }
-        
-        
-        
-        let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(CreateTaskViewController.dismissKeyboard))
-        
-        //Uncomment the line below if you want the tap not not interfere and cancel other interactions.
-        //tap.cancelsTouchesInView = false
-        
-        view.addGestureRecognizer(tap)
+struct TaskEditorView: View {
+    @Environment(\.managedObjectContext) private var context
+    @Environment(\.presentationMode) private var presentationMode
+
+    @FetchRequest(
+        entity: List.entity(),
+        sortDescriptors: [NSSortDescriptor(key: "name", ascending: true)]
+    ) private var lists: FetchedResults<List>
+
+    private let task: Task?
+    private let defaultList: List?
+
+    @State private var title: String
+    @State private var detail: String
+    @State private var selectedListURI: String
+
+    private static let inboxSelection = "__inbox__"
+
+    init(task: Task? = nil, defaultList: List? = nil) {
+        self.task = task
+        self.defaultList = defaultList
+        _title = State(initialValue: task?.title ?? "")
+        _detail = State(initialValue: task?.detail ?? "")
+
+        let initialList = task?.list ?? defaultList
+        _selectedListURI = State(
+            initialValue: initialList?.objectID.uriRepresentation().absoluteString ?? Self.inboxSelection
+        )
     }
-    
-    @objc func dismissKeyboard() {
-        //Causes the view (or one of its embedded text fields) to resign the first responder status.
-        view.endEditing(true)
-    }
-    
-    //MARK: - Actions
-    
-    
-    //https://stackoverflow.com/a/54100880
-    @objc func keyboardWillShow(notification: Notification) {
-        
-        if let userInfo = notification.userInfo {
-            if let keyboardSize = (userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue {
-                constraintFromKyHeight.constant = keyboardSize.height + 10
-                
-                UIView.animate(withDuration: 0.3){
-                    self.view.layoutIfNeeded()
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Task")) {
+                    TextField("Title", text: $title)
+                        .autocapitalization(.sentences)
+
+                    Picker("List", selection: $selectedListURI) {
+                        Text("Inbox").tag(Self.inboxSelection)
+                        ForEach(lists, id: \.objectID) { list in
+                            Text(list.wrappedName)
+                                .tag(list.objectID.uriRepresentation().absoluteString)
+                        }
+                    }
+                }
+
+                Section(header: Text("Notes")) {
+                    ZStack(alignment: .topLeading) {
+                        if detail.isEmpty {
+                            Text("Add notes")
+                                .foregroundColor(Color(UIColor.placeholderText))
+                                .padding(.top, 9)
+                                .padding(.leading, 5)
+                        }
+
+                        MultilineTextView(text: $detail)
+                            .frame(minHeight: 130)
+                    }
+                }
+
+                if let task = task {
+                    Section {
+                        Button(task.isComplete ? "Mark Incomplete" : "Mark Complete") {
+                            task.isComplete.toggle()
+                            task.modified_date = Date()
+                            persistAndDismiss()
+                        }
+                    }
                 }
             }
+            .navigationBarTitle(task == nil ? "New Task" : "Edit Task", displayMode: .inline)
+            .navigationBarItems(
+                leading: Button("Cancel") { presentationMode.wrappedValue.dismiss() },
+                trailing: Button("Save", action: save)
+                    .disabled(trimmedTitle.isEmpty)
+            )
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
-    
-    
-    @IBAction func save(_ sender: UIButton) {
-        guard let title = tfTitle.text, !title.isEmpty else {
-            return
+
+    private var trimmedTitle: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func save() {
+        guard !trimmedTitle.isEmpty else { return }
+
+        let item = task ?? Task(context: context)
+        let now = Date()
+
+        if item.created_date == nil {
+            item.created_date = now
         }
-        
-        
-        if let task = self.task {
-            task.modified_date = Date()
-            
-            task.title = title
-            
-            task.isComplete = false
-            
-            if let descp = tvDescription.text{
-                task.detail = descp
-            }
-            
-        } else {
-            let task = Task(context: managedContext)
-            
-            let dte = Date()
-            task.created_date = dte
-            task.modified_date = dte
-            
-            task.title = title
-            task.isComplete = false
-            
-            if let descp = tvDescription.text{
-                task.detail = descp
-            }
+        item.modified_date = now
+        item.title = trimmedTitle
+        item.detail = detail.trimmingCharacters(in: .whitespacesAndNewlines)
+        item.list = selectedList
+
+        if task == nil {
+            item.isComplete = false
         }
+
+        persistAndDismiss()
+    }
+
+    private var selectedList: List? {
+        guard selectedListURI != Self.inboxSelection else { return nil }
+        return lists.first {
+            $0.objectID.uriRepresentation().absoluteString == selectedListURI
+        } ?? defaultList
+    }
+
+    private func persistAndDismiss() {
         do {
-            try managedContext.save()
-            dismiss(animated: true)
-            tfTitle.resignFirstResponder()
+            try context.save()
+            presentationMode.wrappedValue.dismiss()
         } catch {
-            print("Error saving todo: \(error)")
+            context.rollback()
+            assertionFailure("Unable to save task: \(error)")
         }
     }
-    
-    @IBAction func cancelItem(_ sender: UIButton) {
-        dismiss(animated: true)
-        tvDescription.resignFirstResponder()
+}
+
+struct MultilineTextView: UIViewRepresentable {
+    @Binding var text: String
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.delegate = context.coordinator
+        textView.backgroundColor = .clear
+        textView.font = UIFont.preferredFont(forTextStyle: .body)
+        textView.adjustsFontForContentSizeCategory = true
+        textView.isScrollEnabled = true
+        textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
+        return textView
+    }
+
+    func updateUIView(_ uiView: UITextView, context: Context) {
+        if uiView.text != text {
+            uiView.text = text
+        }
+    }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        @Binding private var text: String
+
+        init(text: Binding<String>) {
+            _text = text
+        }
+
+        func textViewDidChange(_ textView: UITextView) {
+            text = textView.text
+        }
     }
 }

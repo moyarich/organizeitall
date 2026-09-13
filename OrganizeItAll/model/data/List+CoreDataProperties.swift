@@ -1,20 +1,9 @@
-//
-//  List+CoreDataProperties.swift
-//  OrganizeItAll
-//
-//  Created by MOYA RICHARDS on 3/15/20.
-//  Copyright © 2020 MOYA RICHARDS. All rights reserved.
-//
-//
-
-import Foundation
 import CoreData
-
+import Foundation
 
 extension List {
-
     @nonobjc public class func fetchRequest() -> NSFetchRequest<List> {
-        return NSFetchRequest<List>(entityName: "List")
+        NSFetchRequest<List>(entityName: "List")
     }
 
     @NSManaged public var created_date: Date?
@@ -22,14 +11,10 @@ extension List {
     @NSManaged public var modified_date: Date?
     @NSManaged public var name: String?
     @NSManaged public var listId: Int16
-    @NSManaged public var isComplete: Bool
     @NSManaged public var task: NSSet?
-
 }
 
-// MARK: Generated accessors for task
 extension List {
-
     @objc(addTaskObject:)
     @NSManaged public func addToTask(_ value: Task)
 
@@ -41,5 +26,26 @@ extension List {
 
     @objc(removeTask:)
     @NSManaged public func removeFromTask(_ values: NSSet)
+}
 
+extension List {
+    var wrappedName: String {
+        let value = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return value.isEmpty ? "Untitled List" : value
+    }
+
+    var wrappedDetail: String {
+        detail?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    var tasksArray: [Task] {
+        let tasks = task?.allObjects as? [Task] ?? []
+        return tasks.sorted {
+            ($0.modified_date ?? .distantPast) > ($1.modified_date ?? .distantPast)
+        }
+    }
+
+    var openTaskCount: Int {
+        tasksArray.filter { !$0.isComplete }.count
+    }
 }

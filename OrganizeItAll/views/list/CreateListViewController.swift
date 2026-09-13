@@ -1,124 +1,74 @@
-//
-//  CreateItemViewController.swift
-//  OrganizeItAll
-//
-//  Created by MOYA RICHARDS on 3/8/20.
-//  Copyright © 2020 MOYA RICHARDS. All rights reserved.
-//
-
-import UIKit
 import CoreData
+import SwiftUI
 
-class CreateListViewController: UIViewController {
-    
-    @IBOutlet weak var lblHeader: UILabel!
-    
-    //MARK: - Segue data
-    var managedContext: NSManagedObjectContext!
-    
-    var task: Task?
-    
-    //MARK: - Outlets
-    @IBOutlet weak var btnSave: UIButton!
-    
-    @IBOutlet weak var tfTitle: UITextField!
-    @IBOutlet weak var tvDescription: UITextView!
-    
-    //Detail Input Bottom Contraint - matched the keyboard height
-    @IBOutlet weak var constraintFromKyHeight: NSLayoutConstraint!
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow), name: UIResponder.keyboardWillShowNotification, object: nil)
-        
-        
-        tfTitle.becomeFirstResponder()
-        
-        
-        if let task = task {
-            tfTitle.text = task.title
-            tvDescription.text = task.detail
-            lblHeader.text = "Edit List"
-        }else{
-            lblHeader.text = "Create New List"
-        }
-        
-        
-        
-        let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(CreateListViewController.dismissKeyboard))
-        
-        //Uncomment the line below if you want the tap not not interfere and cancel other interactions.
-        //tap.cancelsTouchesInView = false
-        
-        view.addGestureRecognizer(tap)
+struct ListEditorView: View {
+    @Environment(\.managedObjectContext) private var context
+    @Environment(\.presentationMode) private var presentationMode
+
+    private let list: List?
+
+    @State private var name: String
+    @State private var detail: String
+
+    init(list: List? = nil) {
+        self.list = list
+        _name = State(initialValue: list?.name ?? "")
+        _detail = State(initialValue: list?.detail ?? "")
     }
-    
-    @objc func dismissKeyboard() {
-        //Causes the view (or one of its embedded text fields) to resign the first responder status.
-        view.endEditing(true)
-    }
-    
-    //MARK: - Actions
-    
-    
-    //https://stackoverflow.com/a/54100880
-    @objc func keyboardWillShow(notification: Notification) {
-        
-        if let userInfo = notification.userInfo {
-            if let keyboardSize = (userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue {
-                constraintFromKyHeight.constant = keyboardSize.height + 10
-                
-                UIView.animate(withDuration: 0.3){
-                    self.view.layoutIfNeeded()
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("List")) {
+                    TextField("Name", text: $name)
+                        .autocapitalization(.sentences)
+
+                    ZStack(alignment: .topLeading) {
+                        if detail.isEmpty {
+                            Text("Description")
+                                .foregroundColor(Color(UIColor.placeholderText))
+                                .padding(.top, 9)
+                                .padding(.leading, 5)
+                        }
+
+                        MultilineTextView(text: $detail)
+                            .frame(minHeight: 90)
+                    }
                 }
             }
+            .navigationBarTitle(list == nil ? "New List" : "Edit List", displayMode: .inline)
+            .navigationBarItems(
+                leading: Button("Cancel") { presentationMode.wrappedValue.dismiss() },
+                trailing: Button("Save", action: save)
+                    .disabled(trimmedName.isEmpty)
+            )
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
-    
-    
-    @IBAction func save(_ sender: UIButton) {
-        guard let title = tfTitle.text, !title.isEmpty else {
-            return
+
+    private var trimmedName: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func save() {
+        guard !trimmedName.isEmpty else { return }
+
+        let item = list ?? List(context: context)
+        let now = Date()
+
+        if item.created_date == nil {
+            item.created_date = now
         }
-        
-        
-        if let task = self.task {
-            task.modified_date = Date()
-            
-            task.title = title
-            
-            task.isComplete = false
-            
-            if let descp = tvDescription.text{
-                task.detail = descp
-            }
-            
-        } else {
-            let task = Task(context: managedContext)
-            
-            let dte = Date()
-            task.created_date = dte
-            task.modified_date = dte
-            
-            task.title = title
-            task.isComplete = false
-            
-            if let descp = tvDescription.text{
-                task.detail = descp
-            }
-        }
+        item.modified_date = now
+        item.name = trimmedName
+        item.detail = detail.trimmingCharacters(in: .whitespacesAndNewlines)
+
         do {
-            try managedContext.save()
-            dismiss(animated: true)
-            tfTitle.resignFirstResponder()
+            try context.save()
+            presentationMode.wrappedValue.dismiss()
         } catch {
-            print("Error saving data: \(error)")
+            context.rollback()
+            assertionFailure("Unable to save list: \(error)")
         }
-    }
-    
-    @IBAction func cancelItem(_ sender: UIButton) {
-        dismiss(animated: true)
-        tvDescription.resignFirstResponder()
     }
 }

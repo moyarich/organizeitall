@@ -1,124 +1,109 @@
-//
-//  CreateItemViewController.swift
-//  OrganizeItAll
-//
-//  Created by MOYA RICHARDS on 3/8/20.
-//  Copyright © 2020 MOYA RICHARDS. All rights reserved.
-//
-
-import UIKit
 import CoreData
+import SwiftUI
 
-class EditListViewController: UIViewController {
-    
-    @IBOutlet weak var lblHeader: UILabel!
-    
-    //MARK: - Segue data
-    var managedContext: NSManagedObjectContext!
-    
-    var task: Task?
-    
-    //MARK: - Outlets
-    @IBOutlet weak var btnSave: UIButton!
-    
-    @IBOutlet weak var tfTitle: UITextField!
-    @IBOutlet weak var tvDescription: UITextView!
-    
-    //Detail Input Bottom Contraint - matched the keyboard height
-    @IBOutlet weak var constraintFromKyHeight: NSLayoutConstraint!
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow), name: UIResponder.keyboardWillShowNotification, object: nil)
-        
-        
-        tfTitle.becomeFirstResponder()
-        
-        
-        if let task = task {
-            tfTitle.text = task.title
-            tvDescription.text = task.detail
-            lblHeader.text = "Edit List"
-        }else{
-            lblHeader.text = "Create New List"
+private enum ListDetailSheet: Identifiable {
+    case editList
+    case newTask
+    case editTask(Task)
+
+    var id: String {
+        switch self {
+        case .editList:
+            return "edit-list"
+        case .newTask:
+            return "new-task"
+        case .editTask(let task):
+            return "edit-\(task.objectID.uriRepresentation().absoluteString)"
         }
-        
-        
-        
-        let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(CreateListViewController.dismissKeyboard))
-        
-        //Uncomment the line below if you want the tap not not interfere and cancel other interactions.
-        //tap.cancelsTouchesInView = false
-        
-        view.addGestureRecognizer(tap)
     }
-    
-    @objc func dismissKeyboard() {
-        //Causes the view (or one of its embedded text fields) to resign the first responder status.
-        view.endEditing(true)
+}
+
+struct ListDetailView: View {
+    @Environment(\.managedObjectContext) private var context
+    @ObservedObject var list: List
+
+    @FetchRequest private var tasks: FetchedResults<Task>
+    @State private var activeSheet: ListDetailSheet?
+
+    init(list: List) {
+        self.list = list
+        _tasks = FetchRequest<Task>(
+            entity: Task.entity(),
+            sortDescriptors: [NSSortDescriptor(key: "modified_date", ascending: false)],
+            predicate: NSPredicate(format: "list == %@", list)
+        )
     }
-    
-    //MARK: - Actions
-    
-    
-    //https://stackoverflow.com/a/54100880
-    @objc func keyboardWillShow(notification: Notification) {
-        
-        if let userInfo = notification.userInfo {
-            if let keyboardSize = (userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue {
-                constraintFromKyHeight.constant = keyboardSize.height + 10
-                
-                UIView.animate(withDuration: 0.3){
-                    self.view.layoutIfNeeded()
+
+    var body: some View {
+        Group {
+            if tasks.isEmpty {
+                EmptyStateView(
+                    systemImage: "checkmark.circle",
+                    title: "No tasks in this list",
+                    message: "Add the first task and keep everything for \(list.wrappedName) together."
+                )
+            } else {
+                SwiftUI.List {
+                    ForEach(tasks, id: \.objectID) { task in
+                        TaskRow(task: task) {
+                            toggle(task)
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            activeSheet = .editTask(task)
+                        }
+                    }
+                    .onDelete(perform: deleteTasks)
                 }
+                .listStyle(PlainListStyle())
+            }
+        }
+        .navigationBarTitle(list.wrappedName, displayMode: .large)
+        .navigationBarItems(
+            trailing: HStack(spacing: 16) {
+                Button(action: { activeSheet = .editList }) {
+                    Image(systemName: "pencil")
+                }
+                .accessibilityLabel("Edit list")
+
+                Button(action: { activeSheet = .newTask }) {
+                    Image(systemName: "plus.circle.fill")
+                }
+                .accessibilityLabel("Create task")
+            }
+        )
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .editList:
+                ListEditorView(list: list)
+                    .environment(\.managedObjectContext, context)
+            case .newTask:
+                TaskEditorView(defaultList: list)
+                    .environment(\.managedObjectContext, context)
+            case .editTask(let task):
+                TaskEditorView(task: task, defaultList: list)
+                    .environment(\.managedObjectContext, context)
             }
         }
     }
-    
-    
-    @IBAction func save(_ sender: UIButton) {
-        guard let title = tfTitle.text, !title.isEmpty else {
-            return
-        }
-        
-        
-        if let task = self.task {
-            task.modified_date = Date()
-            
-            task.title = title
-            
-            task.isComplete = false
-            
-            if let descp = tvDescription.text{
-                task.detail = descp
-            }
-            
-        } else {
-            let task = Task(context: managedContext)
-            
-            let dte = Date()
-            task.created_date = dte
-            task.modified_date = dte
-            
-            task.title = title
-            task.isComplete = false
-            
-            if let descp = tvDescription.text{
-                task.detail = descp
-            }
-        }
+
+    private func toggle(_ task: Task) {
+        task.isComplete.toggle()
+        task.modified_date = Date()
+        save()
+    }
+
+    private func deleteTasks(at offsets: IndexSet) {
+        offsets.map { tasks[$0] }.forEach(context.delete)
+        save()
+    }
+
+    private func save() {
         do {
-            try managedContext.save()
-            dismiss(animated: true)
-            tfTitle.resignFirstResponder()
+            try context.save()
         } catch {
-            print("Error saving data: \(error)")
+            context.rollback()
+            assertionFailure("Unable to update task: \(error)")
         }
-    }
-    
-    @IBAction func cancelItem(_ sender: UIButton) {
-        dismiss(animated: true)
-        tvDescription.resignFirstResponder()
     }
 }

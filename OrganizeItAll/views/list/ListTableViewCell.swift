@@ -1,59 +1,46 @@
-//
-//  ListTableViewCell.swift
-//  OrganizeItAll
-//
-//  Created by MOYA RICHARDS on 3/15/20.
-//  Copyright © 2020 MOYA RICHARDS. All rights reserved.
-//
+import SwiftUI
 
-import UIKit
+struct ListRow: View {
+    @ObservedObject var list: List
 
-class ListTableViewCell: UITableViewCell {
-    
-    
-    @IBOutlet weak var lblName: UILabel!
-    
-    @IBOutlet weak var imgView: UIImageView!
-    
-    override func awakeFromNib() {
-        super.awakeFromNib()
-        // Initialization code
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color.brandAccent.opacity(0.14))
+                    .frame(width: 42, height: 42)
+
+                Image(systemName: "folder.fill")
+                    .foregroundColor(.brandAccent)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(list.wrappedName)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+
+                if !list.wrappedDetail.isEmpty {
+                    Text(list.wrappedDetail)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+
+                Text(summary)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 5)
+        .accessibilityElement(children: .combine)
     }
-    
-    override func setSelected(_ selected: Bool, animated: Bool) {
-        super.setSelected(selected, animated: animated)
-        
-        // Configure the view for the selected state
+
+    private var summary: String {
+        let total = list.tasksArray.count
+        let open = list.openTaskCount
+        if total == 0 { return "No tasks" }
+        return "\(open) open · \(total) total"
     }
-    
-    
-    //Reset data before reusing the cell
-    override func prepareForReuse() {
-        super.prepareForReuse()
-        self.lblName.text = nil
-        self.contentView.backgroundColor = nil
-        self.accessoryType = .none
-        self.tintColor = nil
-    }
-    
-    //https://github.com/raghurammahathi/Tutorials/blob/79d8cf3a67f86282c381df46b62f24413b15b663/Core%20Graphics/Shapes/Shapes/ViewController.swift
-    func drawCircle(){
-        UIGraphicsBeginImageContextWithOptions(CGSize(width: 256, height: 256), false, 0)
-        let context = UIGraphicsGetCurrentContext()
-        
-        let rectangle = CGRect(x: 5, y: 5, width: 246, height: 246)
-        context?.setFillColor(UIColor.randomColor().cgColor)
-        context?.setStrokeColor(UIColor.black.cgColor)
-        context?.setLineWidth(6)
-        
-        context?.addEllipse(in: rectangle)
-        context?.drawPath(using: CGPathDrawingMode.fillStroke)
-        
-        let img = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
-        imgView.image = img
-        
-        
-    }
-    
 }

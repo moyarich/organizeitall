@@ -1,34 +1,65 @@
-//
-//  OrganizeItAllTests.swift
-//  OrganizeItAllTests
-//
-//  Created by MOYA RICHARDS on 3/7/20.
-//  Copyright © 2020 MOYA RICHARDS. All rights reserved.
-//
-
 import XCTest
 @testable import OrganizeItAll
 
-class OrganizeItAllTests: XCTestCase {
+final class OrganizeItAllTests: XCTestCase {
+    private var stack: CoreDataStack!
 
     override func setUp() {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+        super.setUp()
+        stack = CoreDataStack(inMemory: true)
     }
 
     override func tearDown() {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+        stack = nil
+        super.tearDown()
     }
 
-    func testExample() {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+    func testTaskCanBelongToList() throws {
+        let context = stack.viewContext
+        let list = List(context: context)
+        list.name = "Home"
+
+        let task = Task(context: context)
+        task.title = "Replace air filter"
+        task.list = list
+        task.created_date = Date()
+        task.modified_date = Date()
+
+        try context.save()
+
+        XCTAssertEqual(task.list?.wrappedName, "Home")
+        XCTAssertEqual(list.tasksArray.count, 1)
+        XCTAssertEqual(list.openTaskCount, 1)
     }
 
-    func testPerformanceExample() {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
-        }
+    func testDeletingListPreservesTaskInInbox() throws {
+        let context = stack.viewContext
+        let list = List(context: context)
+        list.name = "Errands"
+
+        let task = Task(context: context)
+        task.title = "Pick up groceries"
+        task.list = list
+
+        try context.save()
+        context.delete(list)
+        try context.save()
+
+        XCTAssertNil(task.list)
+        XCTAssertEqual(task.listName, "Inbox")
     }
 
+    func testCompletedTaskIsNotCountedAsOpen() {
+        let context = stack.viewContext
+        let list = List(context: context)
+        list.name = "Work"
+
+        let task = Task(context: context)
+        task.title = "Ship release"
+        task.list = list
+        task.isComplete = true
+
+        XCTAssertEqual(list.tasksArray.count, 1)
+        XCTAssertEqual(list.openTaskCount, 0)
+    }
 }
