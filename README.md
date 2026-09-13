@@ -1,88 +1,131 @@
 # OrganizeItAll
 
-OrganizeItAll is a modern SwiftUI task organizer for iPhone and iPad. The original 2020 UIKit/Core Data school project has been resurrected as a SwiftUI + SwiftData application while keeping the original idea: organize tasks into lists, keep unfiled work in an Inbox, and quickly mark work complete.
+OrganizeItAll is a small, native iPhone/iPad task organizer built with **SwiftUI** and **SwiftData**.
 
-## Modern stack
+The repository started as a 2020 UIKit/Core Data school project. The `modernize/swiftui-coredata` branch has been rebuilt for modern Apple development while keeping the original idea: create lists, add tasks, keep unfiled tasks in Inbox, and finish work quickly.
 
-- SwiftUI for the application interface
-- SwiftData for persistence
-- `@Model` domain models with native relationships
-- `ModelContainer` / `ModelContext` for storage and writes
-- `@Query` for reactive list and task queries
-- `NavigationStack`, `.searchable`, modern toolbars, and SF Symbols
-- XCTest with an in-memory SwiftData container
+> Last modernization pass: September 2026.
 
-SwiftData is the only application persistence layer. `NSManagedObject`, `NSPersistentContainer`, `@FetchRequest`, and managed-object contexts are no longer used by the app.
+## What the app does
 
-## Features
+- Create, edit, and delete lists.
+- Create, edit, complete, reopen, and delete tasks.
+- Leave a task unassigned to keep it in **Inbox**.
+- Assign tasks to lists.
+- Set **Low / Normal / High** priority.
+- Add an optional due date.
+- See overdue tasks clearly.
+- Search task titles, notes, and list names.
+- Filter tasks by **Open / All / Done**.
+- Preserve tasks when a list is deleted; they move back to Inbox.
 
-### Lists
+## Current stack
 
-Create and edit named lists with optional descriptions. Each list shows its open and total task counts. Selecting a list opens its tasks.
+- SwiftUI
+- SwiftData
+- Swift 6 language mode
+- iOS / iPadOS 17.0+
+- XCTest
+- No third-party dependencies
+- No storyboard-driven app lifecycle
+- No Core Data model or `NSManagedObject` layer
 
-Deleting a list does **not** delete its tasks. SwiftData uses a nullify relationship rule, so those tasks move back to Inbox.
+## Requirements
 
-### Tasks
+For the 2026 toolchain:
 
-Create, edit, complete, reopen, and delete tasks. Tasks can belong to a list or remain unassigned in Inbox.
+- macOS with a supported Xcode installation
+- **Xcode 26.6 or newer recommended**
+- iOS 17.0+ simulator or device
 
-The Tasks tab includes:
+As of September 2026, Xcode 26.6 is the current stable Xcode line and Xcode 27 is available as a release candidate. The project does not require beta software.
 
-- All / Open / Done filters
-- native searchable task filtering
-- search across title, notes, and list name
-- quick completion toggles
+## Run the app in Xcode
+
+```bash
+git clone https://github.com/moyarich/organizeitall.git
+cd organizeitall
+git switch modernize/swiftui-coredata
+open OrganizeItAll.xcodeproj
+```
+
+Then in Xcode:
+
+1. Select the **OrganizeItAll** scheme.
+2. Select an iPhone or iPad simulator running iOS 17 or later.
+3. Press **Command-R** or click **Run**.
+
+The app uses a local SwiftData store automatically. No server, API key, package install, database setup, or environment file is required.
+
+### Run on a physical iPhone or iPad
+
+1. Connect the device to your Mac.
+2. Select the device as the run destination.
+3. In **Signing & Capabilities**, choose your Apple development team if Xcode asks for one.
+4. Press **Command-R**.
+
+## Build from Terminal
+
+A simulator build does not require choosing a particular installed simulator:
+
+```bash
+xcodebuild \
+  -project OrganizeItAll.xcodeproj \
+  -scheme OrganizeItAll \
+  -configuration Debug \
+  -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO \
+  build
+```
+
+To see available simulator devices:
+
+```bash
+xcrun simctl list devices available
+```
+
+Run the unit tests by replacing the sample simulator name with one installed on your Mac:
+
+```bash
+xcodebuild test \
+  -project OrganizeItAll.xcodeproj \
+  -scheme OrganizeItAll \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+  CODE_SIGNING_ALLOWED=NO
+```
 
 ## Data model
 
 ```text
-List
+TaskList
 ├── id: UUID
 ├── name: String
-├── detail: String
-├── createdDate: Date
-├── modifiedDate: Date
-└── tasks: [Task]
+├── notes: String
+├── createdAt: Date
+├── modifiedAt: Date
+└── tasks: [TaskItem]
 
-Task
+TaskItem
 ├── id: UUID
 ├── title: String
-├── detail: String
-├── isComplete: Bool
-├── createdDate: Date
-├── modifiedDate: Date
-└── list: List?
+├── notes: String
+├── isCompleted: Bool
+├── createdAt: Date
+├── modifiedAt: Date
+├── completedAt: Date?
+├── dueDate: Date?
+├── priorityRawValue: Int
+└── list: TaskList?
 ```
 
-`List.tasks` and `Task.list` are inverse SwiftData relationships. Deleting a list nullifies `Task.list`, preserving the task as an Inbox item.
+The relationship uses a **nullify** delete rule. Deleting a `TaskList` does not destroy its tasks; each task becomes an Inbox item instead.
 
-## Requirements
+## About the old Core Data version
 
-- Xcode 15 or newer
-- iOS 17 SDK or newer
-- Swift 5.9+
+This branch is intentionally **SwiftData-only**. It does not keep the old `.xcdatamodeld`, `NSPersistentContainer`, or `NSManagedObject` classes around as a permanent compatibility layer.
 
-The SwiftData experience is available on iOS 17 and later. The current legacy Xcode target still has an older deployment setting, so the scene bootstrap shows an upgrade message on older systems instead of attempting to initialize SwiftData.
+A Core Data store created by the original 2020 application is not automatically imported. If preserving real legacy user data becomes necessary, the right approach is a separate one-time importer rather than carrying two persistence architectures inside the application indefinitely.
 
-## Running
+## Developer documentation
 
-1. Open `OrganizeItAll.xcodeproj` in Xcode.
-2. Select the `OrganizeItAll` scheme.
-3. Choose an iOS 17+ simulator or device.
-4. Build and run.
-
-No external packages or services are required.
-
-## Persistence migration note
-
-This modernization intentionally converts the project to SwiftData rather than retaining Core Data compatibility. Existing stores created by the 2020 Core Data build are not automatically imported into the new SwiftData store.
-
-For this repository, that tradeoff keeps the codebase genuinely modern instead of carrying both persistence frameworks indefinitely. If production users with valuable legacy data are discovered, a separate one-time import utility can be added without making Core Data the ongoing application persistence layer.
-
-## Next improvements
-
-- Raise the Xcode project deployment target to iOS 17 and remove the pre-iOS-17 fallback bootstrap.
-- Rename the remaining legacy source filenames left by the original Xcode project structure.
-- Add due dates, priorities, reminders, and manual ordering.
-- Add widgets and App Intents.
-- Add optional CloudKit-backed SwiftData sync.
+See [readme-dev.md](readme-dev.md) for project structure, architecture, testing, persistence conventions, and development commands.
