@@ -1,30 +1,6 @@
 import Foundation
 import SwiftData
 
-enum TaskPriority: Int, CaseIterable, Identifiable {
-    case low = 0
-    case normal = 1
-    case high = 2
-
-    var id: Int { rawValue }
-
-    var title: String {
-        switch self {
-        case .low: "Low"
-        case .normal: "Normal"
-        case .high: "High"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .low: "arrow.down"
-        case .normal: "minus"
-        case .high: "exclamationmark"
-        }
-    }
-}
-
 @Model
 final class TaskItem {
     @Attribute(.unique) var id: UUID
@@ -38,7 +14,18 @@ final class TaskItem {
     var priorityRawValue: Int
     var list: TaskList?
 
-    init(id: UUID = UUID(), title: String, notes: String = "", isCompleted: Bool = false, createdAt: Date = .now, modifiedAt: Date = .now, completedAt: Date? = nil, dueDate: Date? = nil, priority: TaskPriority = .normal, list: TaskList? = nil) {
+    init(
+        id: UUID = UUID(),
+        title: String,
+        notes: String = "",
+        isCompleted: Bool = false,
+        createdAt: Date = .now,
+        modifiedAt: Date = .now,
+        completedAt: Date? = nil,
+        dueDate: Date? = nil,
+        priority: TaskPriority = .normal,
+        list: TaskList? = nil
+    ) {
         self.id = id
         self.title = title
         self.notes = notes
@@ -58,8 +45,13 @@ extension TaskItem {
         return trimmed.isEmpty ? "Untitled Task" : trimmed
     }
 
-    var displayNotes: String { notes.trimmingCharacters(in: .whitespacesAndNewlines) }
-    var listName: String { list?.displayName ?? "Inbox" }
+    var displayNotes: String {
+        notes.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var listName: String {
+        list?.displayName ?? "Inbox"
+    }
 
     var priority: TaskPriority {
         get { TaskPriority(rawValue: priorityRawValue) ?? .normal }
@@ -80,11 +72,16 @@ extension TaskItem {
     static func displayOrder(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
         if lhs.isCompleted != rhs.isCompleted { return !lhs.isCompleted }
         if lhs.priorityRawValue != rhs.priorityRawValue { return lhs.priorityRawValue > rhs.priorityRawValue }
+
         switch (lhs.dueDate, rhs.dueDate) {
-        case let (left?, right?) where left != right: return left < right
-        case (_?, nil): return true
-        case (nil, _?): return false
-        default: return lhs.modifiedAt > rhs.modifiedAt
+        case let (left?, right?) where left != right:
+            return left < right
+        case (_?, nil):
+            return true
+        case (nil, _?):
+            return false
+        default:
+            return lhs.modifiedAt > rhs.modifiedAt
         }
     }
 }

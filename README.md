@@ -1,46 +1,63 @@
 # OrganizeItAll
 
-OrganizeItAll is a small, native iPhone/iPad task organizer built with **SwiftUI** and **SwiftData**.
+OrganizeItAll is a native iPhone and iPad task organizer built with **SwiftUI**, **SwiftData**, and **Swift 6**.
 
-The repository started as a 2020 UIKit/Core Data school project. The `modernize/swiftui-coredata` branch has been rebuilt for modern Apple development while keeping the original idea: create lists, add tasks, keep unfiled tasks in Inbox, and finish work quickly.
+The original repository was a 2020 UIKit/Core Data project. The `modernize/swiftui-coredata` branch is a clean modern implementation: there are no UIKit view controllers, storyboards, Core Data model files, generated Core Data classes, or legacy image-button assets in the application target.
 
-> Last modernization pass: September 2026.
+## Features
 
-## What the app does
-
-- Create, edit, and delete lists.
+- Create, edit, and delete task lists.
 - Create, edit, complete, reopen, and delete tasks.
-- Leave a task unassigned to keep it in **Inbox**.
-- Assign tasks to lists.
-- Set **Low / Normal / High** priority.
-- Add an optional due date.
-- See overdue tasks clearly.
-- Search task titles, notes, and list names.
+- Keep unassigned tasks in **Inbox**.
+- Move tasks between Inbox and lists.
+- Low / Normal / High priority.
+- Optional due dates and overdue indication.
+- Search titles, notes, and list names.
 - Filter tasks by **Open / All / Done**.
-- Preserve tasks when a list is deleted; they move back to Inbox.
+- Deleting a list preserves its tasks by moving them back to Inbox.
 
-## Current stack
+## Stack
 
-- SwiftUI
-- SwiftData
-- Swift 6 language mode
+- SwiftUI app lifecycle (`@main App`)
+- SwiftData (`@Model`, `@Query`, `ModelContext`)
+- Swift 6 language mode with complete concurrency checking
 - iOS / iPadOS 17.0+
-- XCTest
+- Swift Testing
+- SF Symbols
 - No third-party dependencies
-- No storyboard-driven app lifecycle
-- No Core Data model or `NSManagedObject` layer
 
-## Requirements
+## Project layout
 
-For the 2026 toolchain:
+```text
+OrganizeItAll/
+├── App/
+│   ├── OrganizeItAllApp.swift
+│   └── MainTabView.swift
+├── Models/
+│   ├── TaskItem.swift
+│   ├── TaskList.swift
+│   └── TaskPriority.swift
+├── Features/
+│   ├── TaskLists/
+│   │   ├── TaskListsView.swift
+│   │   ├── TaskListDetailView.swift
+│   │   ├── TaskListEditorView.swift
+│   │   └── TaskListRow.swift
+│   └── Tasks/
+│       ├── TasksView.swift
+│       ├── TaskEditorView.swift
+│       ├── TaskRow.swift
+│       └── TaskFilter.swift
+└── Resources/
+    └── Assets.xcassets/
 
-- macOS with a supported Xcode installation
-- **Xcode 26.6 or newer recommended**
-- iOS 17.0+ simulator or device
+OrganizeItAllTests/
+├── TestModelContext.swift
+├── TaskItemTests.swift
+└── TaskListTests.swift
+```
 
-As of September 2026, Xcode 26.6 is the current stable Xcode line and Xcode 27 is available as a release candidate. The project does not require beta software.
-
-## Run the app in Xcode
+## Run the app
 
 ```bash
 git clone https://github.com/moyarich/organizeitall.git
@@ -49,24 +66,15 @@ git switch modernize/swiftui-coredata
 open OrganizeItAll.xcodeproj
 ```
 
-Then in Xcode:
+In Xcode:
 
 1. Select the **OrganizeItAll** scheme.
-2. Select an iPhone or iPad simulator running iOS 17 or later.
-3. Press **Command-R** or click **Run**.
+2. Choose an iPhone or iPad simulator running iOS 17 or later.
+3. Press **Command-R**.
 
-The app uses a local SwiftData store automatically. No server, API key, package install, database setup, or environment file is required.
+No server, environment file, package install, API key, or database setup is required. SwiftData creates the local store automatically.
 
-### Run on a physical iPhone or iPad
-
-1. Connect the device to your Mac.
-2. Select the device as the run destination.
-3. In **Signing & Capabilities**, choose your Apple development team if Xcode asks for one.
-4. Press **Command-R**.
-
-## Build from Terminal
-
-A simulator build does not require choosing a particular installed simulator:
+### Terminal build
 
 ```bash
 xcodebuild \
@@ -78,13 +86,15 @@ xcodebuild \
   build
 ```
 
-To see available simulator devices:
+### Tests
+
+List available simulators:
 
 ```bash
 xcrun simctl list devices available
 ```
 
-Run the unit tests by replacing the sample simulator name with one installed on your Mac:
+Then run:
 
 ```bash
 xcodebuild test \
@@ -94,38 +104,14 @@ xcodebuild test \
   CODE_SIGNING_ALLOWED=NO
 ```
 
-## Data model
+Replace the simulator name with one installed on your Mac.
 
-```text
-TaskList
-├── id: UUID
-├── name: String
-├── notes: String
-├── createdAt: Date
-├── modifiedAt: Date
-└── tasks: [TaskItem]
+## Persistence
 
-TaskItem
-├── id: UUID
-├── title: String
-├── notes: String
-├── isCompleted: Bool
-├── createdAt: Date
-├── modifiedAt: Date
-├── completedAt: Date?
-├── dueDate: Date?
-├── priorityRawValue: Int
-└── list: TaskList?
-```
+`TaskList` and `TaskItem` are SwiftData models. `TaskList.tasks` uses a nullify relationship rule, so deleting a list preserves its tasks and returns them to Inbox.
 
-The relationship uses a **nullify** delete rule. Deleting a `TaskList` does not destroy its tasks; each task becomes an Inbox item instead.
+The old 2020 Core Data store is intentionally not part of the modern runtime. If importing historical user data ever becomes necessary, implement it as a bounded one-time migration tool instead of restoring Core Data as a permanent dependency.
 
-## About the old Core Data version
+## Developer guide
 
-This branch is intentionally **SwiftData-only**. It does not keep the old `.xcdatamodeld`, `NSPersistentContainer`, or `NSManagedObject` classes around as a permanent compatibility layer.
-
-A Core Data store created by the original 2020 application is not automatically imported. If preserving real legacy user data becomes necessary, the right approach is a separate one-time importer rather than carrying two persistence architectures inside the application indefinitely.
-
-## Developer documentation
-
-See [readme-dev.md](readme-dev.md) for project structure, architecture, testing, persistence conventions, and development commands.
+See [README-DEV.md](README-DEV.md) for architecture, conventions, testing, and development commands.
