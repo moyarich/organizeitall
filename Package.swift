@@ -38,10 +38,10 @@ let package = Package(
             ]
         ),
         .plugin(
-            name: "OrganizeItAllCommand",
+            name: "OrganizeItAllAppCommandPlugin",
             capability: .command(
                 intent: .custom(
-                    verb: "organizeitall",
+                    verb: "app",
                     description: "Build, test, run, and inspect the OrganizeItAll iOS app."
                 )
             ),
