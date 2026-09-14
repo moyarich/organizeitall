@@ -1,12 +1,12 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-// The iOS application and App Store archive remain in OrganizeItAll.xcodeproj.
-// SwiftPM provides fast model tests plus a small command-line launcher that
-// delegates app development actions to scripts/launch.sh.
 let package = Package(
     name: "OrganizeItAll",
-    platforms: [.iOS(.v17), .macOS(.v14)],
+    platforms: [
+        .iOS(.v17),
+        .macOS(.v14)
+    ],
     products: [
         .library(
             name: "OrganizeItAll",
@@ -17,6 +17,12 @@ let package = Package(
             targets: ["OrganizeItAllCLI"]
         )
     ],
+    dependencies: [
+        .package(
+            url: "https://github.com/apple/swift-argument-parser",
+            from: "1.8.2"
+        )
+    ],
     targets: [
         .target(
             name: "OrganizeItAll",
@@ -24,7 +30,22 @@ let package = Package(
         ),
         .executableTarget(
             name: "OrganizeItAllCLI",
-            path: "Sources/OrganizeItAllCLI"
+            dependencies: [
+                .product(
+                    name: "ArgumentParser",
+                    package: "swift-argument-parser"
+                )
+            ]
+        ),
+        .plugin(
+            name: "OrganizeItAllCommand",
+            capability: .command(
+                intent: .custom(
+                    verb: "organizeitall",
+                    description: "Build, test, run, and inspect the OrganizeItAll iOS app."
+                )
+            ),
+            dependencies: ["OrganizeItAllCLI"]
         ),
         .testTarget(
             name: "OrganizeItAllTests",
