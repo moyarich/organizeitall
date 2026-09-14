@@ -25,3 +25,14 @@ playground.xcworkspace
 # Other
 *.swp
 *.orig
+
+# Local publishing credentials
+.env
+.env.*
+!.env.example
+*.p8
+*.p12
+*.mobileprovision
+
+# Local direnv state
+.direnv/
