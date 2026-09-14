@@ -6,6 +6,7 @@ OrganizeItAll is a native iPhone and iPad task organizer built with **SwiftUI**,
 
 | Area | Status |
 | --- | --- |
+| Tasks | **Complete / Supported** |
 | Task Lists | **Complete / Supported** |
 | Inbox | **Complete / Supported** |
 | Task CRUD and completion | **Complete / Supported** |
@@ -15,7 +16,7 @@ OrganizeItAll is a native iPhone and iPad task organizer built with **SwiftUI**,
 | SwiftPM developer workflow | **Supported** |
 | Xcode developer workflow | **Supported** |
 
-**Task List support is complete for the current product scope.** Future additions should be treated as enhancements rather than missing baseline functionality.
+**Tasks and Task Lists are complete for the current product scope.** Future additions should be treated as enhancements rather than missing baseline functionality.
 
 ## Screenshot
 
