@@ -2,26 +2,62 @@
 
 OrganizeItAll is a native iPhone and iPad task organizer built with **SwiftUI**, **SwiftData**, **Swift 6**, and a native **Material Design 3** design system.
 
+## Feature support
+
+| Area | Status |
+| --- | --- |
+| Task Lists | **Complete / Supported** |
+| Inbox | **Complete / Supported** |
+| Task CRUD and completion | **Complete / Supported** |
+| Task organization and movement | **Complete / Supported** |
+| Search, filtering, and sorting | **Complete / Supported** |
+| Manual ordering and bulk actions | **Complete / Supported** |
+| SwiftPM developer workflow | **Supported** |
+| Xcode developer workflow | **Supported** |
+
+**Task List support is complete for the current product scope.** Future additions should be treated as enhancements rather than missing baseline functionality.
+
 ## Screenshot
 
 <img src="docs/images/tasks-iphone.png" alt="OrganizeItAll Tasks screen on iPhone, showing search, filters, an Inbox task, and the New task button" width="360">
 
 ## Features
 
-- Create, edit, and delete task lists.
+### Task Lists
+
+- Permanent built-in **Inbox** for tasks that are not assigned to a custom list.
+- Create, edit, and delete custom task lists.
+- Search lists by name or notes.
+- Active and Archived list scopes.
+- Pin and unpin lists.
+- Archive and restore lists.
+- Customize list icon and Material color.
+- Manually reorder custom lists.
+- Prevent duplicate custom list names and reserve the name **Inbox**.
+- Deleting a custom list preserves its tasks by returning them to Inbox.
+
+### Tasks
+
 - Create, edit, complete, reopen, and delete tasks.
-- Keep unassigned tasks in **Inbox**.
-- Move tasks between Inbox and lists.
+- Move tasks between Inbox and custom lists.
 - Low / Normal / High priority.
 - Optional due dates and overdue indication.
-- Search titles, notes, and list names.
-- Filter tasks by **Open / All / Done**.
-- Deleting a list preserves its tasks by moving them back to Inbox.
-- Light and dark Material 3 color schemes.
+- Search task titles and notes inside Inbox and custom lists.
+- Filter by **Open / All / Completed**.
+- Sort by **Smart / Manual / Due date / Priority / Recently updated / Created**.
+- Manual drag ordering.
+- Context-menu quick actions.
+- Multi-select with bulk complete, reopen, move, and delete actions.
+
+### Appearance
+
+- Native SwiftUI Material Design 3 adaptation.
+- Light and dark Material color schemes.
+- SF Symbols for platform-native iconography.
 
 ## UI / design system
 
-The interface uses an iOS-native Material Design 3 adaptation implemented directly in SwiftUI. There is no Android/Compose runtime and no third-party Material package.
+The interface uses an iOS-native Material Design 3 adaptation implemented directly in SwiftUI. There is no Android/Compose runtime and no third-party Material UI framework.
 
 The design system includes:
 
@@ -46,7 +82,8 @@ The design system includes:
 - Swift Testing
 - Material Design 3-inspired SwiftUI design system
 - SF Symbols
-- No third-party dependencies
+- Swift Package Manager developer tooling
+- `swift-argument-parser` for the Swift CLI
 
 ## Project layout
 
@@ -59,224 +96,201 @@ OrganizeItAll/
 │   ├── TaskLists/
 │   └── Tasks/
 └── Resources/
+
 OrganizeItAllTests/
 
+Sources/
+└── OrganizeItAllCLI/            # native Swift developer CLI
+
+Plugins/
+└── OrganizeItAllAppCommandPlugin/ # `swift package app`
+
 scripts/
-├── menu.sh              # Unified fzf menu
-├── launch.sh            # Simulator launch, build, and tests
-└── publish.sh           # App Store export and upload
-OrganizeItAll.xcodeproj/  # Xcode project and shared scheme
+├── menu.sh                      # optional shell/fzf workflow
+├── launch.sh                    # optional simulator workflow
+└── publish.sh                   # App Store export and upload
+
+Package.swift
+OrganizeItAll.xcodeproj/         # Xcode project and shared scheme
 ```
 
 ## Quick start
 
 ### Requirements
 
-- macOS with full Xcode installed (Swift 6 support).
-- An iOS simulator runtime installed through Xcode, with an iPhone or iPad simulator running iOS 17 or later.
-- `fzf` for the interactive menus. If you use Homebrew, install it with `brew install fzf`.
+- macOS with full Xcode installed with Swift 6 support.
+- An iOS simulator runtime installed through Xcode.
+- An iPhone or iPad simulator running iOS 17 or later.
 
-Apple's standalone Command Line Tools are not enough to build this iOS app.
-There are no third-party app dependencies, servers, API keys, or environment files to configure. SwiftData creates the local database automatically.
+Swift Package Manager ships with the Swift toolchain. For this iOS project, use the Swift toolchain bundled with full Xcode rather than standalone Command Line Tools.
 
-### define the active developer directory for your Mac's xcode command-line tools
+To make full Xcode the active developer directory:
 
+```bash
 sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+```
+
+Clone the repository:
 
 ```bash
 git clone https://github.com/moyarich/organizeitall.git
 cd organizeitall
+```
+
+## SwiftPM workflow
+
+SwiftPM is a first-class developer entry point for the repository.
+
+```bash
+swift build
+swift test
+swift run
+```
+
+`swift run` builds the `organizeitall` executable and, by default, builds and launches the iOS app on an available simulator.
+
+Explicit CLI commands:
+
+```bash
+swift run organizeitall run
+swift run organizeitall build
+swift run organizeitall test
+swift run organizeitall devices
+swift run organizeitall stop
+swift run organizeitall xcode
+```
+
+The package command plugin exposes the same native Swift tooling through:
+
+```bash
+swift package app run
+swift package app build
+swift package app test
+swift package app devices
+swift package app stop
+swift package app xcode
+```
+
+Useful standard SwiftPM commands also include:
+
+```bash
+swift package describe
+swift package show-dependencies
+swift package clean
+swift package reset
+```
+
+The SwiftPM executable and command plugin are implemented in Swift and do not delegate to `scripts/launch.sh`.
+
+## Xcode workflow
+
+Open `OrganizeItAll.xcodeproj`, select the **OrganizeItAll** scheme and an iPhone or iPad simulator, then press **Command-R**.
+
+From the command line:
+
+```bash
+open OrganizeItAll.xcodeproj
+```
+
+Xcode remains the native project environment for SwiftUI development, debugging, signing, previews, simulator management, and App Store archives.
+
+## Optional shell workflow
+
+The existing shell launcher remains available as an optional workflow and is independent of the SwiftPM CLI.
+
+Install `fzf` if you want interactive shell menus:
+
+```bash
+brew install fzf
+```
+
+Then run:
+
+```bash
 ./scripts/menu.sh
 ```
 
-Choose **run**, then choose an iPhone or iPad simulator. The launcher boots the
-simulator, waits for it to finish starting, builds the app, installs it, and opens it.
-Type to filter either menu, press Enter to select, or Escape to cancel.
+Or use direct shell commands:
 
-### Launcher commands
+| Command | Action |
+| --- | --- |
+| `./scripts/launch.sh run` | Choose a simulator, build, and launch the app |
+| `./scripts/launch.sh build` | Build for iOS Simulator without launching |
+| `./scripts/launch.sh test` | Choose a simulator and run tests |
+| `./scripts/launch.sh devices` | List available simulators and UUIDs |
+| `./scripts/launch.sh stop` | Stop the app on booted simulators |
+| `./scripts/launch.sh xcode` | Open the Xcode project |
+| `./scripts/launch.sh help` | Show command usage |
 
-Run `./scripts/menu.sh` for the combined fzf menu: launch, build, test, list
-simulators, open Xcode, check publishing settings, export an IPA, or upload to
-App Store Connect. Selecting **upload** starts the publishing workflow.
-The `.env` file stays in the repository root.
+## Tests
 
-| Command                                             | Action                                        |
-| --------------------------------------------------- | --------------------------------------------- |
-| `./scripts/launch.sh` or `./scripts/launch.sh menu` | Open the fzf action menu                      |
-| `./scripts/launch.sh run`                           | Choose a simulator, build, and launch the app |
-| `./scripts/launch.sh build`                         | Build for iOS Simulator without launching     |
-| `./scripts/launch.sh test`                          | Choose a simulator and run the tests          |
-| `./scripts/launch.sh devices`                       | List available simulators and their UUIDs     |
-| `./scripts/launch.sh xcode`                         | Open the project in Xcode                     |
-| `./scripts/launch.sh help`                          | Show command usage                            |
-
-To skip the simulator picker, copy a UUID from `./scripts/launch.sh devices` and pass it
-as the second argument to `run` or `test`:
+Run model and persistence tests with:
 
 ```bash
-./scripts/launch.sh run SIMULATOR_UUID
-./scripts/launch.sh test SIMULATOR_UUID
+swift test
 ```
 
-Replace `SIMULATOR_UUID` with an available iOS simulator's UUID. These direct
-commands do not require fzf. Neither do `build`, `devices`, `xcode`, or `help`.
-
-The launcher uses the selected full Xcode installation, falling back to
-`/Applications/Xcode.app`. It does not change the Mac's global developer setting.
-For Xcode installed elsewhere, set `DEVELOPER_DIR` explicitly:
-
-```bash
-DEVELOPER_DIR="/path/to/Xcode.app/Contents/Developer" ./scripts/launch.sh
-```
-
-Build products and test results go into the ignored `DerivedData/` folder.
-The script resolves paths relative to its own location, so it can also be invoked
-by its full path from another directory. Launching again restarts the app without
-resetting its saved data.
-
-### Run from Xcode
-
-Run `./scripts/launch.sh xcode`, then:
-
-1. Select the **OrganizeItAll** scheme.
-2. Choose an iPhone or iPad simulator running iOS 17 or later.
-3. Press **Command-R**.
-
-### Tests
-
-Run `./scripts/launch.sh test` to execute the Swift Testing suite. Its 13 tests cover
-Inbox assignment, completion timestamps, priority sorting, list relationships,
-overdue boundaries, saved edits, moving tasks, task deletion, open-task counts,
-and preserving tasks when a list is deleted. Tests use an in-memory SwiftData
-store.
-
-### Troubleshooting
-
-- **fzf is missing:** Install it with `brew install fzf`, or use the direct commands above with a simulator UUID.
-- **Full Xcode is missing:** Install and open Xcode to complete its setup. If it is outside `/Applications/Xcode.app`, provide `DEVELOPER_DIR` as shown above.
-- **No iOS simulators are available:** Install an iOS runtime in Xcode Settings > Components and create a simulator in Xcode's Devices and Simulators window if needed.
-- **An old simulator UUID no longer works:** Run `./scripts/launch.sh devices` and choose a currently available device.
-- **First launch takes longer:** The simulator may need to complete its initial startup and data migration. The launcher waits for it before building and installing.
-
-## Publish to App Store Connect
-
-Use `scripts/publish.sh` to archive a Release build and export or upload it with Xcode.
-This requires an Apple Developer Program membership, a registered bundle ID
-`com.moyarich.OrganizeItAll`, and a matching app record in App Store Connect.
-Your account must have access to distribution signing certificates and profiles.
-The script allows Xcode to create or update signing resources automatically.
-
-1. Copy `.env.example` to `.env` if the local file does not already exist.
-2. Fill in `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, and `ASC_KEY_PATH`.
-   Use an App Store Connect **team API key** with the permissions needed for your
-   app and signing resources. `ASC_KEY_PATH` points to the downloaded `.p8` file;
-   keep it outside the repository when possible.
-3. Set `APP_VERSION` and a `BUILD_NUMBER` higher than the previous upload for that
-   version. The script preserves this build number rather than letting Xcode change it.
-4. Run the commands below as needed.
-
-```bash
-./scripts/publish.sh check   # Check local settings without contacting Apple
-./scripts/publish.sh export  # Build a signed archive and export an IPA
-./scripts/publish.sh upload  # Build a fresh signed archive and upload to Apple
-```
-
-With no argument, the script runs `check`. Configuration checks do not verify
-Apple credentials, signing permissions, or whether a build number is available.
-Export and upload both require valid signing access and may contact Apple.
-Each run saves its archive and export output under `build/app-store/`.
-
-`.env` is local and ignored by Git; `.env.example` contains only blank settings
-and is safe to share. Private keys and provisioning files are also ignored.
-The script reads `.env` as shell configuration, so use only trusted contents.
-
-An upload does **not** submit the app for review or release it publicly. After
-Apple processes the build, complete the store listing, screenshots, privacy and
-compliance information, select the build, and submit it for App Review in
-[App Store Connect](https://appstoreconnect.apple.com/). See Apple's
-[upload guide](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds)
-for the build processing workflow.
-
-## Persistence
-
-`TaskList` and `TaskItem` are SwiftData models. `TaskList.tasks` uses a nullify relationship rule, so deleting a list preserves its tasks and returns them to Inbox.
-
-The old 2020 Core Data store is intentionally not part of the modern runtime. If importing historical user data ever becomes necessary, implement it as a bounded one-time migration tool instead of restoring Core Data as a permanent dependency.
-
-## Developer guide
-
-See [Developer guide](docs/README-DEV.md) for architecture, Material 3 conventions, testing, persistence rules, and development commands.
-
-## Close the app
-
-On iPhone/iPad or its simulator, swipe up from the bottom edge and pause to open
-App Switcher, then swipe the OrganizeItAll card upward. On devices with a Home
-button, double-click Home to open App Switcher. Going to the Home Screen alone
-leaves the app in the background.
-
-For a simulator, choose **stop** in `./scripts/menu.sh`, or run:
-
-```bash
-./scripts/launch.sh stop
-```
-
-This closes OrganizeItAll on booted simulators without deleting saved tasks.
-Pass a simulator UUID after `stop` to target one device. **quit** only exits the
-terminal menu. To close the Simulator desktop application itself, use Command-Q
-while Simulator is active.
-
-## Swift package model tests
-
-`Package.swift` builds the shared sources in `OrganizeItAll/Models` and runs
-`OrganizeItAllTests` directly on macOS 14 or later with Swift 6:
+or:
 
 ```bash
 ./scripts/test.sh
 ```
 
-The script selects full Xcode automatically without changing global settings and
-uses a separate package build directory. Choose **models** in the fzf menu for
-the same tests. To run Swift directly with full Xcode, use:
+The suite covers Inbox assignment, completion timestamps, smart and manual ordering, priority and due-date sorting, list relationships, list organization metadata, persistence, moving tasks, task deletion, open-task counts, and preserving tasks when a list is deleted.
+
+For the Xcode/iOS test workflow:
 
 ```bash
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift test
+swift run organizeitall test
 ```
 
-The package covers models and persistence tests. Use `./scripts/menu.sh` and
-`OrganizeItAll.xcodeproj` for the iOS interface, simulator launch, app icon,
-signing, and App Store publishing. `swift run` does not launch the iPhone app.
+## Persistence
 
-If plain `swift test` reports `SwiftDataMacros` plugin errors, the selected
-Command Line Tools do not provide the required macro plugin. Use
-`./scripts/test.sh` instead. Do not remove SwiftData annotations to work around
-a toolchain selection error.
+`TaskList` and `TaskItem` are SwiftData models. `TaskList.tasks` uses a nullify relationship rule, so deleting a custom list preserves its tasks and returns them to Inbox.
 
-## direnv: use plain swift test
+Task Lists persist organization metadata including pin/archive state, icon, color, and manual order. Tasks persist their own manual order in addition to normal task metadata.
 
-The project uses `.env` directly; no `.envrc` is needed. Starting
-`./scripts/menu.sh` automatically runs `scripts/setup.sh`, which installs direnv
-through Homebrew if missing, enables native `.env` discovery in your user-level
-`direnv.toml`, creates `.env` from `.env.example` if needed, and allows it.
-Existing `.env` values are preserved. Set `DEVELOPER_DIR` to your full Xcode
-installation; the default is `/Applications/Xcode.app/Contents/Developer`.
+The old 2020 Core Data store is intentionally not part of the modern runtime. If importing historical user data ever becomes necessary, implement it as a bounded one-time migration tool instead of restoring Core Data as a permanent dependency.
 
-Direnv loads all `.env` settings, including any publishing credentials, into the
-project shell and restores the previous environment when you leave. `.env`
-remains ignored by Git. Native `.env` discovery also applies to other directories;
-each environment still needs direnv authorization.
+## Publish to App Store Connect
 
-If your shell does not already enable direnv, add this line to `~/.zshrc` once:
+Use `scripts/publish.sh` to archive a Release build and export or upload it with Xcode. This requires an Apple Developer Program membership, a registered bundle ID `com.moyarich.OrganizeItAll`, and a matching app record in App Store Connect.
+
+On a fresh checkout, copy `.env.example` to `.env` and configure:
+
+- `APPLE_TEAM_ID`
+- `ASC_KEY_ID`
+- `ASC_ISSUER_ID`
+- `ASC_KEY_PATH`
+- `APP_VERSION`
+- `BUILD_NUMBER`
+
+Then run:
 
 ```bash
-eval "$(direnv hook zsh)"
+./scripts/publish.sh check
+./scripts/publish.sh export
+./scripts/publish.sh upload
 ```
 
-Open a new terminal, enter this repository, then run:
+Uploading does not submit the app for review or release it publicly. Finish the App Store listing, screenshots, privacy/compliance information, build selection, and review submission in App Store Connect.
+
+## Developer guide
+
+See [Developer guide](docs/README-DEV.md) for architecture, Material 3 conventions, persistence rules, testing, SwiftPM, Xcode, and development commands.
+
+## Close the app
+
+From the native Swift CLI:
 
 ```bash
-./scripts/setup.sh
-swift test
+swift run organizeitall stop
 ```
 
-Without the shell hook, use `direnv exec . swift test`. After editing `.env`, run
-`direnv allow .env` to approve the updated settings.
+Or with the optional shell workflow:
+
+```bash
+./scripts/launch.sh stop
+```
+
+This stops OrganizeItAll on booted simulators without deleting saved task data.
