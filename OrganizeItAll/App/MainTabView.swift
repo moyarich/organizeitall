@@ -10,17 +10,14 @@ struct MainTabView: View {
     @State private var selectedTab: AppTab = .tasks
 
     var body: some View {
-        ZStack {
-            colors.surface.ignoresSafeArea()
-
+        VStack(spacing: 0) {
             switch selectedTab {
             case .lists:
                 TaskListsView()
             case .tasks:
                 TasksView()
             }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+
             HStack(spacing: 8) {
                 MaterialNavigationBarItem(
                     title: "Lists",
@@ -45,5 +42,6 @@ struct MainTabView: View {
             .padding(.bottom, 8)
             .background(colors.surfaceContainer)
         }
+        .background(colors.surface.ignoresSafeArea())
     }
 }

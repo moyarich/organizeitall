@@ -82,6 +82,26 @@ OrganizeItAllTests/
 
 ## Run the app
 
+From this folder, run `./launch.sh` to open the **fzf** menu. Choose **run**,
+then an iPhone or iPad simulator. The script builds, installs, and opens the app.
+It finds full Xcode automatically without changing your global developer settings.
+Requires Xcode with an iOS simulator runtime and `fzf` (`brew install fzf`).
+
+Other menu actions build the app, run tests, list simulators, or open Xcode.
+For direct commands:
+
+```bash
+./launch.sh build
+./launch.sh devices
+./launch.sh run <simulator-UUID>
+./launch.sh test <simulator-UUID>
+```
+
+Build products are stored in the ignored `DerivedData/` folder. You can run the
+script from any working directory. Press Escape to cancel either menu.
+
+### Run from Xcode
+
 ```bash
 git clone https://github.com/moyarich/organizeitall.git
 cd organizeitall

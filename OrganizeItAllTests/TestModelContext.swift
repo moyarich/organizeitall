@@ -1,4 +1,5 @@
 import SwiftData
+@testable import OrganizeItAll
 
 @MainActor
 func makeTestModelContext() throws -> ModelContext {
