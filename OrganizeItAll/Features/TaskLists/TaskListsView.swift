@@ -83,7 +83,7 @@ private struct InboxTaskListRow: View {
                         .foregroundStyle(colors.onSurface)
 
                     Text("Default")
-                        .font(MaterialTypography.labelSmall)
+                        .font(MaterialTypography.labelMedium)
                         .foregroundStyle(colors.onSecondaryContainer)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
