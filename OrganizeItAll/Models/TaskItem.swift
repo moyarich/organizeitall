@@ -12,6 +12,7 @@ final class TaskItem {
     var completedAt: Date?
     var dueDate: Date?
     var priorityRawValue: Int
+    var manualOrder: Double = 0
     var list: TaskList?
 
     init(
@@ -24,6 +25,7 @@ final class TaskItem {
         completedAt: Date? = nil,
         dueDate: Date? = nil,
         priority: TaskPriority = .normal,
+        manualOrder: Double = Date.now.timeIntervalSinceReferenceDate,
         list: TaskList? = nil
     ) {
         self.id = id
@@ -35,6 +37,7 @@ final class TaskItem {
         self.completedAt = completedAt
         self.dueDate = dueDate
         self.priorityRawValue = priority.rawValue
+        self.manualOrder = manualOrder
         self.list = list
     }
 }
@@ -87,5 +90,10 @@ extension TaskItem {
         default:
             return lhs.modifiedAt > rhs.modifiedAt
         }
+    }
+
+    static func manualDisplayOrder(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
+        if lhs.manualOrder != rhs.manualOrder { return lhs.manualOrder < rhs.manualOrder }
+        return lhs.modifiedAt > rhs.modifiedAt
     }
 }

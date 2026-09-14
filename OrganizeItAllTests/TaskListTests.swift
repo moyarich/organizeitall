@@ -98,4 +98,44 @@ struct TaskListTests {
         task.setCompleted(false)
         #expect(list.openTaskCount == 1)
     }
+
+    @Test("List organization metadata persists")
+    @MainActor
+    func organizationMetadataPersists() throws {
+        let context = try makeTestModelContext()
+        let list = TaskList(
+            name: "Important",
+            iconName: "star.fill",
+            colorToken: "tertiary",
+            isPinned: true,
+            isArchived: true,
+            manualOrder: 7
+        )
+        context.insert(list)
+        try context.save()
+
+        let fresh = ModelContext(context.container)
+        let saved = try #require(fresh.fetch(FetchDescriptor<TaskList>()).first)
+        #expect(saved.iconName == "star.fill")
+        #expect(saved.colorToken == "tertiary")
+        #expect(saved.isPinned)
+        #expect(saved.isArchived)
+        #expect(saved.manualOrder == 7)
+    }
+
+    @Test("Pinned lists sort before unpinned lists and manual order breaks ties")
+    func listManualSorting() {
+        let first = TaskList(name: "First", isPinned: true, manualOrder: 2)
+        let second = TaskList(name: "Second", isPinned: true, manualOrder: 1)
+        let third = TaskList(name: "Third", isPinned: false, manualOrder: 0)
+
+        #expect([first, third, second].sorted(by: TaskList.manualDisplayOrder).map(\.name)
+            == ["Second", "First", "Third"])
+    }
+
+    @Test("List names normalize case whitespace and diacritics")
+    func normalizedNames() {
+        #expect(TaskList.normalizedName("  INBOX ") == TaskList.normalizedName("Inbox"))
+        #expect(TaskList.normalizedName("Résumé") == TaskList.normalizedName("resume"))
+    }
 }

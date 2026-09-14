@@ -74,6 +74,16 @@ struct TaskItemTests {
         }
     }
 
+    @Test("Manual order sorts independently of smart task order")
+    func manualSorting() {
+        let first = TaskItem(title: "First", priority: .low, manualOrder: 1)
+        let second = TaskItem(title: "Second", priority: .high, manualOrder: 2)
+
+        #expect([second, first].sorted(by: TaskItem.manualDisplayOrder).map(\.title)
+            == ["First", "Second"])
+        #expect([second, first].sorted(by: TaskItem.displayOrder).first?.title == "Second")
+    }
+
     @Test("Overdue excludes today's tasks, undated tasks, and completed tasks")
     func overdueBoundaries() throws {
         let today = Calendar.current.startOfDay(for: .now)
@@ -100,6 +110,7 @@ struct TaskItemTests {
         task.notes = "Details"
         task.priority = .high
         task.dueDate = Date(timeIntervalSince1970: 123456)
+        task.manualOrder = 42
         task.setCompleted(true)
         try context.save()
         let fresh = ModelContext(context.container)
@@ -109,6 +120,7 @@ struct TaskItemTests {
         #expect(saved.notes == "Details")
         #expect(saved.priority == .high)
         #expect(saved.dueDate == task.dueDate)
+        #expect(saved.manualOrder == 42)
         #expect(saved.isCompleted)
         #expect(saved.completedAt != nil)
         #expect(saved.modifiedAt == task.modifiedAt)
