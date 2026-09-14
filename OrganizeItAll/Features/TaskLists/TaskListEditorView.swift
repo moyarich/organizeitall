@@ -27,6 +27,13 @@ struct TaskListEditorView: View {
                         MaterialTextField(label: "List name", text: $name, systemImage: "folder")
                             .textInputAutocapitalization(.sentences)
 
+                        if isInboxName {
+                            Text("Inbox is the built-in default list and cannot be used as a custom list name.")
+                                .font(MaterialTypography.bodyMedium)
+                                .foregroundStyle(colors.error)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
                         MaterialMultilineField(label: "Notes", text: $notes, minHeight: 140)
 
                         if list != nil {
@@ -60,7 +67,7 @@ struct TaskListEditorView: View {
                     Button("Save", action: save)
                         .fontWeight(.semibold)
                         .foregroundStyle(colors.primary)
-                        .disabled(trimmedName.isEmpty)
+                        .disabled(trimmedName.isEmpty || isInboxName)
                 }
             }
             .confirmationDialog("Delete this list?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
@@ -75,8 +82,12 @@ struct TaskListEditorView: View {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var isInboxName: Bool {
+        trimmedName.caseInsensitiveCompare("Inbox") == .orderedSame
+    }
+
     private func save() {
-        guard !trimmedName.isEmpty else { return }
+        guard !trimmedName.isEmpty, !isInboxName else { return }
 
         let now = Date.now
         let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
