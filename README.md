@@ -2,7 +2,11 @@
 
 OrganizeItAll is a native iPhone and iPad task organizer built with **SwiftUI**, **SwiftData**, **Swift 6**, and a native **Material Design 3** design system.
 
-The original repository was a 2020 UIKit/Core Data project. The `modernize/swiftui-coredata` branch is a clean modern implementation with no UIKit view controllers, storyboards, Core Data model files, generated Core Data classes, or legacy image-button assets in the application target.
+The original repository was a 2020 UIKit/Core Data project. The current `main` branch contains a clean modern implementation with no UIKit view controllers, storyboards, Core Data model files, generated Core Data classes, or legacy image-button assets in the application target.
+
+## Screenshot
+
+<img src="docs/images/tasks-iphone.png" alt="OrganizeItAll Tasks screen on iPhone, showing search, filters, an Inbox task, and the New task button" width="360">
 
 ## Features
 
@@ -78,70 +82,90 @@ OrganizeItAllTests/
 ├── TestModelContext.swift
 ├── TaskItemTests.swift
 └── TaskListTests.swift
+
+launch.sh                # Interactive launcher and terminal commands
+OrganizeItAll.xcodeproj/  # Xcode project and shared scheme
 ```
 
-## Run the app
+## Quick start
 
-From this folder, run `./launch.sh` to open the **fzf** menu. Choose **run**,
-then an iPhone or iPad simulator. The script builds, installs, and opens the app.
-It finds full Xcode automatically without changing your global developer settings.
-Requires Xcode with an iOS simulator runtime and `fzf` (`brew install fzf`).
+### Requirements
 
-Other menu actions build the app, run tests, list simulators, or open Xcode.
-For direct commands:
+- macOS with full Xcode installed (Swift 6 support).
+- An iOS simulator runtime installed through Xcode, with an iPhone or iPad simulator running iOS 17 or later.
+- `fzf` for the interactive menus. If you use Homebrew, install it with `brew install fzf`.
 
-```bash
-./launch.sh build
-./launch.sh devices
-./launch.sh run <simulator-UUID>
-./launch.sh test <simulator-UUID>
-```
-
-Build products are stored in the ignored `DerivedData/` folder. You can run the
-script from any working directory. Press Escape to cancel either menu.
-
-### Run from Xcode
+Apple's standalone Command Line Tools are not enough to build this iOS app.
+There are no third-party app dependencies, servers, API keys, or environment files to configure. SwiftData creates the local database automatically.
 
 ```bash
 git clone https://github.com/moyarich/organizeitall.git
 cd organizeitall
-git switch modernize/swiftui-coredata
-open OrganizeItAll.xcodeproj
+./launch.sh
 ```
 
-In Xcode:
+Choose **run**, then choose an iPhone or iPad simulator. The launcher boots the
+simulator, waits for it to finish starting, builds the app, installs it, and opens it.
+Type to filter either menu, press Enter to select, or Escape to cancel.
+
+### Launcher commands
+
+| Command | Action |
+| --- | --- |
+| `./launch.sh` or `./launch.sh menu` | Open the fzf action menu |
+| `./launch.sh run` | Choose a simulator, build, and launch the app |
+| `./launch.sh build` | Build for iOS Simulator without launching |
+| `./launch.sh test` | Choose a simulator and run the tests |
+| `./launch.sh devices` | List available simulators and their UUIDs |
+| `./launch.sh xcode` | Open the project in Xcode |
+| `./launch.sh help` | Show command usage |
+
+To skip the simulator picker, copy a UUID from `./launch.sh devices` and pass it
+as the second argument to `run` or `test`:
+
+```bash
+./launch.sh run SIMULATOR_UUID
+./launch.sh test SIMULATOR_UUID
+```
+
+Replace `SIMULATOR_UUID` with an available iOS simulator's UUID. These direct
+commands do not require fzf. Neither do `build`, `devices`, `xcode`, or `help`.
+
+The launcher uses the selected full Xcode installation, falling back to
+`/Applications/Xcode.app`. It does not change the Mac's global developer setting.
+For Xcode installed elsewhere, set `DEVELOPER_DIR` explicitly:
+
+```bash
+DEVELOPER_DIR="/path/to/Xcode.app/Contents/Developer" ./launch.sh
+```
+
+Build products and test results go into the ignored `DerivedData/` folder.
+The script resolves paths relative to its own location, so it can also be invoked
+by its full path from another directory. Launching again restarts the app without
+resetting its saved data.
+
+### Run from Xcode
+
+Run `./launch.sh xcode`, then:
 
 1. Select the **OrganizeItAll** scheme.
 2. Choose an iPhone or iPad simulator running iOS 17 or later.
 3. Press **Command-R**.
 
-No server, environment file, package install, API key, or database setup is required. SwiftData creates the local store automatically.
-
-### Terminal build
-
-```bash
-xcodebuild \
-  -project OrganizeItAll.xcodeproj \
-  -scheme OrganizeItAll \
-  -configuration Debug \
-  -destination 'generic/platform=iOS Simulator' \
-  CODE_SIGNING_ALLOWED=NO \
-  build
-```
-
 ### Tests
 
-```bash
-xcrun simctl list devices available
+Run `./launch.sh test` to execute the Swift Testing suite. Its five tests cover
+Inbox assignment, completion timestamps, priority sorting, list relationships,
+and preserving tasks when a list is deleted. Tests use an in-memory SwiftData
+store.
 
-xcodebuild test \
-  -project OrganizeItAll.xcodeproj \
-  -scheme OrganizeItAll \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
-  CODE_SIGNING_ALLOWED=NO
-```
+### Troubleshooting
 
-Replace the simulator name with one installed on your Mac.
+- **fzf is missing:** Install it with `brew install fzf`, or use the direct commands above with a simulator UUID.
+- **Full Xcode is missing:** Install and open Xcode to complete its setup. If it is outside `/Applications/Xcode.app`, provide `DEVELOPER_DIR` as shown above.
+- **No iOS simulators are available:** Install an iOS runtime in Xcode Settings > Components and create a simulator in Xcode's Devices and Simulators window if needed.
+- **An old simulator UUID no longer works:** Run `./launch.sh devices` and choose a currently available device.
+- **First launch takes longer:** The simulator may need to complete its initial startup and data migration. The launcher waits for it before building and installing.
 
 ## Persistence
 
