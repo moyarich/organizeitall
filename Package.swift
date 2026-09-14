@@ -1,15 +1,51 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-// The iOS application and App Store archive remain in OrganizeItAll.xcodeproj.
-// This package builds the same model sources for fast, simulator-free tests.
 let package = Package(
     name: "OrganizeItAll",
-    platforms: [.iOS(.v17), .macOS(.v14)],
+    platforms: [
+        .iOS(.v17),
+        .macOS(.v14)
+    ],
+    products: [
+        .library(
+            name: "OrganizeItAll",
+            targets: ["OrganizeItAll"]
+        ),
+        .executable(
+            name: "organizeitall",
+            targets: ["OrganizeItAllCLI"]
+        )
+    ],
+    dependencies: [
+        .package(
+            url: "https://github.com/apple/swift-argument-parser",
+            from: "1.8.2"
+        )
+    ],
     targets: [
         .target(
             name: "OrganizeItAll",
             path: "OrganizeItAll/Models"
+        ),
+        .executableTarget(
+            name: "OrganizeItAllCLI",
+            dependencies: [
+                .product(
+                    name: "ArgumentParser",
+                    package: "swift-argument-parser"
+                )
+            ]
+        ),
+        .plugin(
+            name: "OrganizeItAllAppCommandPlugin",
+            capability: .command(
+                intent: .custom(
+                    verb: "app",
+                    description: "Build, test, run, and inspect the OrganizeItAll iOS app."
+                )
+            ),
+            dependencies: ["OrganizeItAllCLI"]
         ),
         .testTarget(
             name: "OrganizeItAllTests",

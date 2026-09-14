@@ -49,8 +49,12 @@ extension TaskItem {
         notes.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    var isInInbox: Bool {
+        list == nil
+    }
+
     var listName: String {
-        list?.displayName ?? "Inbox"
+        isInInbox ? "Inbox" : list?.displayName ?? "Inbox"
     }
 
     var priority: TaskPriority {
