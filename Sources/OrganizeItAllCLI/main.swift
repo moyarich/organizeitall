@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 private enum LauncherError: Error, CustomStringConvertible {
@@ -61,12 +62,12 @@ private func runLauncher() throws -> Never {
         throw LauncherError.launchFailed(error)
     }
 
-    Foundation.exit(process.terminationStatus)
+    Darwin.exit(process.terminationStatus)
 }
 
 do {
     try runLauncher()
 } catch {
     fputs("organizeitall: \(error)\n", stderr)
-    Foundation.exit(1)
+    Darwin.exit(1)
 }
