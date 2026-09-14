@@ -108,10 +108,12 @@ private struct AppEnvironment {
 
     func ensureReady(_ simulator: Simulator) throws {
         if !simulator.isBooted {
+            print("Booting \(simulator.name)…")
             try run(executable: "/usr/bin/xcrun", arguments: ["simctl", "boot", simulator.udid])
         }
 
         let simulatorApp = developerDirectory.appendingPathComponent("Applications/Simulator.app")
+        print("Preparing \(simulator.name) (\(simulator.udid))…")
         try run(
             executable: "/usr/bin/open",
             arguments: [simulatorApp.path, "--args", "-CurrentDeviceUDID", simulator.udid]
@@ -123,6 +125,10 @@ private struct AppEnvironment {
     }
 
     func build(action: String, destination: String) throws {
+        let verb = action == "test" ? "Testing" : "Building"
+        print("\(verb) OrganizeItAll for \(destination)…")
+        fflush(stdout)
+
         try run(
             executable: "/usr/bin/xcodebuild",
             arguments: [
@@ -146,16 +152,20 @@ private struct AppEnvironment {
             throw CLIError.appNotBuilt(appPath)
         }
 
+        print("Installing OrganizeItAll on \(simulator.name)…")
         try run(
             executable: "/usr/bin/xcrun",
             arguments: ["simctl", "install", simulator.udid, appPath]
         )
+
+        print("Launching OrganizeItAll…")
         try run(
             executable: "/usr/bin/xcrun",
             arguments: [
                 "simctl", "launch", "--terminate-running-process", simulator.udid, bundleID
             ]
         )
+        print("OrganizeItAll is running on \(simulator.name).")
     }
 
     func stop(simulatorID: String?) throws {
