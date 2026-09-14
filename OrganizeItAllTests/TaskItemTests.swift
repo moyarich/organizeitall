@@ -5,7 +5,7 @@ import Testing
 
 @Suite("TaskItem")
 struct TaskItemTests {
-    @Test("Unassigned tasks belong to Inbox")
+    @Test("Unassigned tasks belong to Inbox by default")
     @MainActor
     func unassignedTaskUsesInbox() throws {
         let context = try makeTestModelContext()
@@ -15,6 +15,7 @@ struct TaskItemTests {
         try context.save()
 
         #expect(task.list == nil)
+        #expect(task.isInInbox)
         #expect(task.listName == "Inbox")
     }
 
