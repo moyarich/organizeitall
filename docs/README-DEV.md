@@ -322,6 +322,36 @@ Pass a simulator UUID after `stop` to target one device. **quit** only exits the
 terminal menu. To close the Simulator desktop application itself, use Command-Q
 while Simulator is active.
 
+## Swift CLI commands for this repository
+
+This repository has a `Package.swift`, but it defines only the shared model target and its tests. It does **not** define an executable product. Because of that, the generic Swift commands do not all apply in the same way.
+
+| Command | Works here? | Purpose |
+| --- | --- | --- |
+| `swift build` | Yes | Build the Swift package targets in `Package.swift` |
+| `swift test` | Yes | Run the Swift package model/persistence tests |
+| `swift package describe` | Yes | Show the package products and targets |
+| `swift package clean` | Yes | Remove package build artifacts |
+| `swift package reset` | Yes | Reset package caches/build state |
+| `swift package show-dependencies` | Yes | Show package dependencies |
+| `swift repl` | Toolchain-dependent | Start the Swift interactive REPL |
+| `swift run` | **No** | Requires an executable product; OrganizeItAll has none |
+| `swift package` | Not by itself | `swift package` is a command group; use a subcommand such as `describe`, `clean`, or `show-dependencies` |
+
+`swift run` returning:
+
+```text
+error: no executable product available
+```
+
+is expected for this project. The iPhone/iPad application is an Xcode application target, not a Swift Package executable. To run the app, use:
+
+```bash
+./scripts/launch.sh run
+```
+
+or open `OrganizeItAll.xcodeproj` in Xcode and press **Command-R**.
+
 ## Swift package model tests
 
 `Package.swift` builds the shared sources in `OrganizeItAll/Models` and runs
