@@ -15,12 +15,24 @@ private enum TaskListSheet: Identifiable {
     }
 }
 
+private enum InboxSheet: Identifiable {
+    case newTask
+    case editTask(TaskItem)
+
+    var id: String {
+        switch self {
+        case .newTask: "new-inbox-task"
+        case .editTask(let task): "edit-inbox-task-\(task.id.uuidString)"
+        }
+    }
+}
+
 struct InboxTaskListView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.materialColors) private var colors
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.modifiedAt, order: .reverse) private var tasks: [TaskItem]
-    @State private var activeSheet: TaskListSheet?
+    @State private var activeSheet: InboxSheet?
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -64,8 +76,6 @@ struct InboxTaskListView: View {
         .toolbar(.hidden, for: .navigationBar)
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
-            case .editList:
-                EmptyView()
             case .newTask:
                 TaskEditorView()
             case .editTask(let task):
