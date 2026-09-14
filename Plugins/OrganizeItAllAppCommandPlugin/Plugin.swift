@@ -7,7 +7,7 @@ struct OrganizeItAllAppCommandPlugin: CommandPlugin {
         context: PluginContext,
         arguments: [String]
     ) async throws {
-        let tool = try context.tool(named: "organizeitall")
+        let tool = try context.tool(named: "OrganizeItAllCLI")
 
         let process = Process()
         process.executableURL = tool.url
